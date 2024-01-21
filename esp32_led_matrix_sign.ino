@@ -5,6 +5,7 @@
 
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include "MBTASans.h"
+#include "esp32-custom-pin-mapping.h"
 
 
 #define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
@@ -27,10 +28,12 @@ uint16_t AMBER = dma_display->color565(255, 191, 0);
 void setup() {
 
   // Module configuration
+  HUB75_I2S_CFG::i2s_pins _pins={R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN, B2_PIN, A_PIN, B_PIN, C_PIN, D_PIN, E_PIN, LAT_PIN, OE_PIN, CLK_PIN};
   HUB75_I2S_CFG mxconfig(
     PANEL_RES_X,   // module width
     PANEL_RES_Y,   // module height
-    PANEL_CHAIN    // Chain length
+    PANEL_CHAIN,    // Chain length
+    _pins // pin mapping
   );
 
   // This is essential to avoid artifacts on the display
