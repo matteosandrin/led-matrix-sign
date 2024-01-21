@@ -10,6 +10,9 @@
 #define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
 #define PANEL_RES_Y 32     // Number of pixels tall of each INDIVIDUAL panel module.
 #define PANEL_CHAIN 5      // Total number of panels chained one to another
+
+#define SIGN_MODE_MBTA 0
+uint8_t SIGN_MODE = SIGN_MODE_MBTA;
  
 //MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
@@ -38,7 +41,21 @@ void setup() {
   dma_display->begin();
   dma_display->setBrightness8(90); //0-255
   dma_display->clearScreen();
- 
+}
+
+void loop() {
+  switch (SIGN_MODE)
+  {
+  case SIGN_MODE_MBTA:
+    mbta_sign_mode_loop();
+    break;
+  default:
+    break;
+  }
+
+}
+
+void mbta_sign_mode_loop() {
   dma_display->setFont(&MBTASans);
   dma_display->setTextSize(1);
   dma_display->setTextWrap(false);
@@ -53,10 +70,5 @@ void setup() {
   dma_display->print("1 min");
   dma_display->setCursor(110, 31);
   dma_display->print("5 min");
-
-}
-
-uint8_t wheelval = 0;
-void loop() {
-  delay(100);
+  delay(1000);
 }
