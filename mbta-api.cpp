@@ -60,10 +60,8 @@ int fetch_predictions(JsonDocument *prediction_data)
                     {
                         Serial.print(F("deserializeJson() failed: "));
                         Serial.println(error.f_str());
-                        https.end();
                         return -1;
                     }
-                    https.end();
                     return 0;
                 }
             }
