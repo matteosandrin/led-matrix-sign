@@ -30,7 +30,7 @@ uint16_t AMBER = dma_display->color565(255, 191, 0);
 
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
-unsigned long wifi_previous_millis = 0;
+unsigned long wifi_previous_millis = millis();
 unsigned long wifi_check_interval = 30000; // 30s
 
 void init_wifi()
@@ -54,6 +54,7 @@ void check_wifi_and_reconnect()
   if ((WiFi.status() != WL_CONNECTED) &&
       (current_millis - wifi_previous_millis >= wifi_check_interval))
   {
+    Serial.println("Wifi disconnected. Attempting to reconnect...");
     WiFi.disconnect();
     WiFi.reconnect();
     wifi_previous_millis = current_millis;
@@ -62,10 +63,9 @@ void check_wifi_and_reconnect()
 
 void print_ram_info()
 {
+  float free_heap_percent = float(ESP.getFreeHeap()) / float(ESP.getHeapSize()) * 100;
   Serial.printf("Total heap: %u\n", ESP.getHeapSize());
-  Serial.printf("Free heap: %u\n", ESP.getFreeHeap());
-  Serial.printf("Total PSRAM: %u\n", ESP.getPsramSize());
-  Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+  Serial.printf("Free heap: %u (%.1f%%)\n", ESP.getFreeHeap(), free_heap_percent);
 }
 
 void setup()
@@ -104,7 +104,7 @@ void loop()
   default:
     break;
   }
-  // check_wifi_and_reconnect();
+  check_wifi_and_reconnect();
 }
 
 void mbta_sign_mode_loop()
@@ -112,7 +112,6 @@ void mbta_sign_mode_loop()
 
   Serial.println("updating LED matrix");
   dma_display->setFont(&MBTASans);
-  dma_display->clearScreen();
   dma_display->setTextSize(1);
   dma_display->setTextWrap(false);
   dma_display->setTextColor(AMBER);
@@ -125,9 +124,13 @@ void mbta_sign_mode_loop()
     Serial.println("Failed to fetch MBTA data");
     dma_display->setCursor(0, 0);
     dma_display->print("mbta api failed.");
-  } else {
+  }
+  else
+  {
     Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
     Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
+
+    dma_display->clearScreen();
 
     dma_display->setCursor(0, 15);
     dma_display->print(predictions[0].label);
@@ -140,5 +143,5 @@ void mbta_sign_mode_loop()
     dma_display->print(predictions[1].value);
   }
   print_ram_info();
-  delay(20000);
+  delay(5000);
 }
