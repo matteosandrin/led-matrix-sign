@@ -11,15 +11,13 @@
                      "include=trip&"                                        \
                      "sort=arrival_time"
 
+DynamicJsonDocument *prediction_data = new DynamicJsonDocument(8192);
+WiFiClientSecure *wifi_client = new WiFiClientSecure;
+
 int get_mbta_predictions(Prediction dst[2])
 {
-    DynamicJsonDocument *prediction_data = new DynamicJsonDocument(8192);
+
     int status = fetch_predictions(prediction_data);
-    if (status != 0)
-    {
-        prediction_data->clear();
-        return status;
-    }
     JsonObject prediction1 = find_first_prediction_for_direction(
         prediction_data, 0);
     JsonObject prediction2 = find_first_prediction_for_direction(
@@ -32,25 +30,21 @@ int get_mbta_predictions(Prediction dst[2])
     return 0;
 }
 
-int fetch_predictions(DynamicJsonDocument *prediction_data)
+int fetch_predictions(JsonDocument *prediction_data)
 {
-    WiFiClientSecure *client = new WiFiClientSecure;
-    if (client)
+    if (wifi_client)
     {
-        client->setInsecure();
+        wifi_client->setInsecure();
         HTTPClient https;
-        if (https.begin(*client, MBTA_REQUEST))
+        if (https.begin(*wifi_client, MBTA_REQUEST))
         {
             int httpCode = https.GET();
+            Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
             if (httpCode > 0)
             {
-                Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
                 // file found at server
                 if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
                 {
-                    // print server response payload
-                    String payload = https.getString();
-                    Serial.println(payload.substring(0, 100));
 
                     // filter down the response so less memory is used
                     StaticJsonDocument<1024> filter;
@@ -61,13 +55,15 @@ int fetch_predictions(DynamicJsonDocument *prediction_data)
                     filter["included"][0]["attributes"]["headsign"] = true;
 
                     DeserializationError error = deserializeJson(
-                        *prediction_data, payload, DeserializationOption::Filter(filter));
+                        *prediction_data, https.getStream(), DeserializationOption::Filter(filter));
                     if (error)
                     {
                         Serial.print(F("deserializeJson() failed: "));
                         Serial.println(error.f_str());
+                        https.end();
                         return -1;
                     }
+                    https.end();
                     return 0;
                 }
             }
@@ -77,7 +73,7 @@ int fetch_predictions(DynamicJsonDocument *prediction_data)
 }
 
 JsonObject find_first_prediction_for_direction(
-    DynamicJsonDocument *prediction_data_ptr, int direction)
+    JsonDocument *prediction_data_ptr, int direction)
 {
     DynamicJsonDocument prediction_data = *prediction_data_ptr;
 
@@ -93,7 +89,7 @@ JsonObject find_first_prediction_for_direction(
 }
 
 JsonObject find_trip_for_prediction(
-    DynamicJsonDocument *prediction_data_ptr, JsonObject prediction)
+    JsonDocument *prediction_data_ptr, JsonObject prediction)
 {
     DynamicJsonDocument prediction_data = *prediction_data_ptr;
 

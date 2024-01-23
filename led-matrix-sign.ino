@@ -6,19 +6,19 @@
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
+#include <ESP.h>
 #include "MBTASans.h"
 #include "esp32-custom-pin-mapping.h"
 #include "mbta-api.h"
 
-
-#define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
-#define PANEL_RES_Y 32     // Number of pixels tall of each INDIVIDUAL panel module.
-#define PANEL_CHAIN 5      // Total number of panels chained one to another
+#define PANEL_RES_X 32 // Number of pixels wide of each INDIVIDUAL panel module.
+#define PANEL_RES_Y 32 // Number of pixels tall of each INDIVIDUAL panel module.
+#define PANEL_CHAIN 5  // Total number of panels chained one to another
 
 #define SIGN_MODE_MBTA 0
 uint8_t SIGN_MODE = SIGN_MODE_MBTA;
- 
-//MatrixPanel_I2S_DMA dma_display;
+
+// MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
 uint16_t myBLACK = dma_display->color565(0, 0, 0);
@@ -28,16 +28,18 @@ uint16_t myGREEN = dma_display->color565(0, 255, 0);
 uint16_t myBLUE = dma_display->color565(0, 0, 255);
 uint16_t AMBER = dma_display->color565(255, 191, 0);
 
-const char* ssid = "OliveBranch2.4GHz";
-const char* password = "Breadstick_lover_68";
+const char *ssid = "OliveBranch2.4GHz";
+const char *password = "Breadstick_lover_68";
 unsigned long wifi_previous_millis = 0;
 unsigned long wifi_check_interval = 30000; // 30s
 
-void init_wifi() {
+void init_wifi()
+{
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi ..");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     Serial.print('.');
     delay(1000);
   }
@@ -46,41 +48,54 @@ void init_wifi() {
   Serial.println(WiFi.RSSI());
 }
 
-void check_wifi_and_reconnect() {
+void check_wifi_and_reconnect()
+{
   unsigned long current_millis = millis();
   if ((WiFi.status() != WL_CONNECTED) &&
-      (current_millis - wifi_previous_millis >= wifi_check_interval)) {
+      (current_millis - wifi_previous_millis >= wifi_check_interval))
+  {
     WiFi.disconnect();
     WiFi.reconnect();
     wifi_previous_millis = current_millis;
   }
 }
 
-void setup() {
+void print_ram_info()
+{
+  Serial.printf("Total heap: %u\n", ESP.getHeapSize());
+  Serial.printf("Free heap: %u\n", ESP.getFreeHeap());
+  Serial.printf("Total PSRAM: %u\n", ESP.getPsramSize());
+  Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+}
+
+void setup()
+{
   Serial.begin(115200);
-  while (!Serial) continue;
+  while (!Serial)
+    continue;
   init_wifi();
-  
+
   // Module configuration
-  HUB75_I2S_CFG::i2s_pins _pins={R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN, B2_PIN, A_PIN, B_PIN, C_PIN, D_PIN, E_PIN, LAT_PIN, OE_PIN, CLK_PIN};
+  HUB75_I2S_CFG::i2s_pins _pins = {R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN, B2_PIN, A_PIN, B_PIN, C_PIN, D_PIN, E_PIN, LAT_PIN, OE_PIN, CLK_PIN};
   HUB75_I2S_CFG mxconfig(
-    PANEL_RES_X,   // module width
-    PANEL_RES_Y,   // module height
-    PANEL_CHAIN,    // Chain length
-    _pins // pin mapping
+      PANEL_RES_X, // module width
+      PANEL_RES_Y, // module height
+      PANEL_CHAIN, // Chain length
+      _pins        // pin mapping
   );
 
   // This is essential to avoid artifacts on the display
   mxconfig.clkphase = false;
-  
+
   // Display Setup
   dma_display = new MatrixPanel_I2S_DMA(mxconfig);
   dma_display->begin();
-  dma_display->setBrightness8(90); //0-255
+  dma_display->setBrightness8(90); // 0-255
   dma_display->clearScreen();
 }
 
-void loop() {
+void loop()
+{
   switch (SIGN_MODE)
   {
   case SIGN_MODE_MBTA:
@@ -92,7 +107,8 @@ void loop() {
   // check_wifi_and_reconnect();
 }
 
-void mbta_sign_mode_loop() {
+void mbta_sign_mode_loop()
+{
 
   Serial.println("updating LED matrix");
   dma_display->setFont(&MBTASans);
@@ -104,7 +120,8 @@ void mbta_sign_mode_loop() {
   Prediction predictions[2];
   int status = get_mbta_predictions(predictions);
 
-  if (status != 0) {
+  if (status != 0)
+  {
     Serial.println("Failed to fetch MBTA data");
     dma_display->setCursor(0, 0);
     dma_display->print("mbta api failed.");
@@ -122,5 +139,6 @@ void mbta_sign_mode_loop() {
     dma_display->setCursor(110, 31);
     dma_display->print(predictions[1].value);
   }
+  print_ram_info();
   delay(20000);
 }
