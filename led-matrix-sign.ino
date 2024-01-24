@@ -35,9 +35,9 @@ const char *password = "Breadstick_lover_68";
 unsigned long wifi_previous_millis = millis();
 unsigned long wifi_check_interval = 30000; // 30s
 int cycle = 0;
-const char* ntpServer1 = "pool.ntp.org";
-const char* ntpServer2 = "time.nist.gov";
-const char* time_zone = "EST5EDT,M3.2.0,M11.1.0"; // TZ_America_New_York
+const char *ntpServer1 = "pool.ntp.org";
+const char *ntpServer2 = "time.nist.gov";
+const char *time_zone = "EST5EDT,M3.2.0,M11.1.0"; // TZ_America_New_York
 
 void setup_wifi()
 {
@@ -74,11 +74,13 @@ void print_ram_info()
   Serial.printf("Free heap: %u (%.1f%%)\n", ESP.getFreeHeap(), free_heap_percent);
 }
 
-void setup_time() {
+void setup_time()
+{
   sntp_servermode_dhcp(1);
   configTzTime(time_zone, ntpServer1, ntpServer2);
   Serial.printf("Syncing time with NTP servers...");
-  while (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED) {
+  while (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED)
+  {
     Serial.printf(".");
     delay(1000);
   }
