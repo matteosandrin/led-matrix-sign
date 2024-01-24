@@ -18,6 +18,9 @@ int get_mbta_predictions(Prediction dst[2])
 {
 
     int status = fetch_predictions(prediction_data);
+    if (status != 0) {
+        return status;
+    }
     JsonObject prediction1 = find_first_prediction_for_direction(
         prediction_data, 0);
     JsonObject prediction2 = find_first_prediction_for_direction(
