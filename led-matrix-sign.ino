@@ -3,13 +3,15 @@
 // on a 64x32 LED matrix
 //
 
-#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
-#include <WiFi.h>
 #include <ArduinoJson.h>
 #include <ESP.h>
-#include "MBTASans.h"
+#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
+#include <WiFi.h>
 #include "esp32-custom-pin-mapping.h"
 #include "mbta-api.h"
+#include "MBTASans.h"
+#include "sntp.h"
+#include "time.h"
 
 #define PANEL_RES_X 32 // Number of pixels wide of each INDIVIDUAL panel module.
 #define PANEL_RES_Y 32 // Number of pixels tall of each INDIVIDUAL panel module.
@@ -32,8 +34,12 @@ const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
 unsigned long wifi_previous_millis = millis();
 unsigned long wifi_check_interval = 30000; // 30s
+int cycle = 0;
+const char* ntpServer1 = "pool.ntp.org";
+const char* ntpServer2 = "time.nist.gov";
+const char* time_zone = "EST5EDT,M3.2.0,M11.1.0"; // TZ_America_New_York
 
-void init_wifi()
+void setup_wifi()
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -68,12 +74,27 @@ void print_ram_info()
   Serial.printf("Free heap: %u (%.1f%%)\n", ESP.getFreeHeap(), free_heap_percent);
 }
 
+void setup_time() {
+  sntp_servermode_dhcp(1);
+  configTzTime(time_zone, ntpServer1, ntpServer2);
+  Serial.printf("Syncing time with NTP servers...");
+  while (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED) {
+    Serial.printf(".");
+    delay(1000);
+  }
+  Serial.println(" Done!");
+  struct tm timeinfo;
+  getLocalTime(&timeinfo);
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+}
+
 void setup()
 {
   Serial.begin(115200);
   while (!Serial)
     continue;
-  init_wifi();
+  setup_wifi();
+  setup_time();
 
   // Module configuration
   HUB75_I2S_CFG::i2s_pins _pins = {R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN, B2_PIN, A_PIN, B_PIN, C_PIN, D_PIN, E_PIN, LAT_PIN, OE_PIN, CLK_PIN};
@@ -110,7 +131,8 @@ void loop()
 void mbta_sign_mode_loop()
 {
 
-  Serial.println("updating LED matrix");
+  Serial.printf("[cycle %d] updating LED matrix\n", cycle);
+  cycle++;
   dma_display->setFont(&MBTASans);
   dma_display->setTextSize(1);
   dma_display->setTextWrap(false);
