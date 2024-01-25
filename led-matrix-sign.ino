@@ -85,7 +85,8 @@ void setup_time()
     delay(1000);
   }
   struct tm timeinfo;
-  while (!getLocalTime(&timeinfo)) {
+  while (!getLocalTime(&timeinfo))
+  {
     Serial.printf(".");
     delay(1000);
   }
