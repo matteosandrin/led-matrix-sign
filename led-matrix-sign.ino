@@ -84,10 +84,16 @@ void setup_time()
     Serial.printf(".");
     delay(1000);
   }
-  Serial.println(" Done!");
   struct tm timeinfo;
-  getLocalTime(&timeinfo);
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  while (!getLocalTime(&timeinfo)) {
+    Serial.printf(".");
+    delay(1000);
+  }
+  Serial.println(" Done!");
+  Serial.println("Setting timezone");
+  setenv("TZ", time_zone, 1);
+  tzset();
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S%z");
 }
 
 void setup()
@@ -168,4 +174,5 @@ void mbta_sign_mode_loop()
   }
   print_ram_info();
   delay(5000);
+  Serial.print("\n\n\n");
 }

@@ -17,3 +17,9 @@ JsonObject find_trip_for_prediction(
     JsonDocument *prediction_data_ptr, JsonObject prediction);
 
 void format_prediction(JsonObject prediction, JsonObject trip, Prediction *dst);
+
+double diff_with_local_time(String timestring);
+
+double time_diff(struct tm time1, struct tm time2);
+
+void determine_display_string(double arr_diff, double dep_diff, char *dst);
