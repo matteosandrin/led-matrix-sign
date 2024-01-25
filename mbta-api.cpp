@@ -163,7 +163,7 @@ void format_prediction(JsonObject prediction, JsonObject trip, Prediction *dst)
     Serial.printf("status: %s %d\n", status, status == NULL);
     if (!status.equals("null"))
     {
-        status.substring(0, 7).toCharArray(dst->value, 7);
+        status.substring(0, 7).toCharArray(dst->value, 16);
         return;
     }
     struct tm local_time;

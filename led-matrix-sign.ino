@@ -17,6 +17,10 @@
 #define PANEL_RES_Y 32 // Number of pixels tall of each INDIVIDUAL panel module.
 #define PANEL_CHAIN 5  // Total number of panels chained one to another
 
+#define SCREEN_WIDTH PANEL_RES_X * PANEL_CHAIN
+#define SCREEN_HEIGHT PANEL_RES_Y
+
+
 #define SIGN_MODE_MBTA 0
 uint8_t SIGN_MODE = SIGN_MODE_MBTA;
 
@@ -163,14 +167,16 @@ void mbta_sign_mode_loop()
 
     dma_display->clearScreen();
 
+    int cursorX_01 = min(110, (int)(SCREEN_WIDTH - strlen(predictions[0].value) * 10));
     dma_display->setCursor(0, 15);
     dma_display->print(predictions[0].label);
-    dma_display->setCursor(110, 15);
+    dma_display->setCursor(cursorX_01, 15);
     dma_display->print(predictions[0].value);
 
+    int cursorX_02 = min(110, (int)(SCREEN_WIDTH - strlen(predictions[1].value) * 10));
     dma_display->setCursor(0, 31);
     dma_display->print(predictions[1].label);
-    dma_display->setCursor(110, 31);
+    dma_display->setCursor(cursorX_02, 31);
     dma_display->print(predictions[1].value);
   }
   print_ram_info();
