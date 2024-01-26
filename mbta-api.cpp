@@ -26,8 +26,14 @@ PredictionStatus get_mbta_predictions(Prediction dst[2])
         prediction_data, 0);
     JsonObject prediction2 = find_first_prediction_for_direction(
         prediction_data, 1);
+    if (prediction1.isNull() || prediction2.isNull()) {
+        return PREDICTION_STATUS_ERROR;
+    }
     JsonObject trip1 = find_trip_for_prediction(prediction_data, prediction1);
     JsonObject trip2 = find_trip_for_prediction(prediction_data, prediction2);
+    if (trip1.isNull() || trip2.isNull()) {
+        return PREDICTION_STATUS_ERROR;
+    }
     format_prediction(prediction1, trip1, &dst[0]);
     format_prediction(prediction2, trip2, &dst[1]);
     prediction_data->clear();
@@ -79,33 +85,36 @@ int fetch_predictions(JsonDocument *prediction_data)
 JsonObject find_first_prediction_for_direction(
     JsonDocument *prediction_data_ptr, int direction)
 {
-    DynamicJsonDocument prediction_array = (*prediction_data_ptr)["data"];
+    JsonArray prediction_array = (*prediction_data_ptr)["data"];
+    JsonObject prediction;
 
     for (int i = 0; i < prediction_array.size(); i++)
     {
-        JsonObject prediction = prediction_array[i];
+        prediction = prediction_array[i];
         int d = prediction["attributes"]["direction_id"];
         if (d == direction)
         {
             return prediction;
         }
     }
-    Serial.println("We should never get here");
+    return prediction;
 }
 
 JsonObject find_trip_for_prediction(
     JsonDocument *prediction_data_ptr, JsonObject prediction)
 {
-    DynamicJsonDocument trip_array = (*prediction_data_ptr)["included"];
+    JsonArray trip_array = (*prediction_data_ptr)["included"];
+    JsonObject trip;
 
     for (int i = 0; i < trip_array.size(); i++)
     {
-        JsonObject trip = trip_array[i];
+        trip = trip_array[i];
         if (trip["id"] == prediction["relationships"]["trip"]["data"]["id"])
         {
             return trip;
         }
     }
+    return trip;
 }
 
 double diff_with_local_time(String timestring)
