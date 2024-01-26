@@ -154,7 +154,7 @@ void mbta_sign_mode_loop()
   Prediction predictions[2];
   int status = get_mbta_predictions(predictions);
 
-  if (status != 0)
+  if (status != PREDICTION_STATUS_OK)
   {
     Serial.println("Failed to fetch MBTA data");
     dma_display->setCursor(0, 0);

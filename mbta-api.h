@@ -6,7 +6,13 @@ struct Prediction
     char value[16];
 };
 
-int get_mbta_predictions(Prediction dst[2]);
+enum PredictionStatus {
+    PREDICTION_STATUS_OK,
+    PREDICTION_STATUS_ERROR,
+    PREDICTION_STATUS_SKIP
+};
+
+PredictionStatus get_mbta_predictions(Prediction dst[2]);
 
 int fetch_predictions(JsonDocument *prediction_data);
 

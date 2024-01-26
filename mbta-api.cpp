@@ -14,13 +14,13 @@
 DynamicJsonDocument *prediction_data = new DynamicJsonDocument(8192);
 WiFiClientSecure *wifi_client = new WiFiClientSecure;
 
-int get_mbta_predictions(Prediction dst[2])
+PredictionStatus get_mbta_predictions(Prediction dst[2])
 {
 
     int status = fetch_predictions(prediction_data);
     if (status != 0)
     {
-        return status;
+        return PREDICTION_STATUS_ERROR;
     }
     JsonObject prediction1 = find_first_prediction_for_direction(
         prediction_data, 0);
@@ -31,7 +31,7 @@ int get_mbta_predictions(Prediction dst[2])
     format_prediction(prediction1, trip1, &dst[0]);
     format_prediction(prediction2, trip2, &dst[1]);
     prediction_data->clear();
-    return 0;
+    return PREDICTION_STATUS_OK;
 }
 
 int fetch_predictions(JsonDocument *prediction_data)
@@ -66,24 +66,24 @@ int fetch_predictions(JsonDocument *prediction_data)
                     {
                         Serial.print(F("deserializeJson() failed: "));
                         Serial.println(error.f_str());
-                        return -1;
+                        return 1;
                     }
                     return 0;
                 }
             }
         }
     }
-    return -1;
+    return 1;
 }
 
 JsonObject find_first_prediction_for_direction(
     JsonDocument *prediction_data_ptr, int direction)
 {
-    DynamicJsonDocument prediction_data = *prediction_data_ptr;
+    DynamicJsonDocument prediction_array = (*prediction_data_ptr)["data"];
 
-    for (int i = 0; i < prediction_data["data"].size(); i++)
+    for (int i = 0; i < prediction_array.size(); i++)
     {
-        JsonObject prediction = prediction_data["data"][i];
+        JsonObject prediction = prediction_array[i];
         int d = prediction["attributes"]["direction_id"];
         if (d == direction)
         {
@@ -96,11 +96,11 @@ JsonObject find_first_prediction_for_direction(
 JsonObject find_trip_for_prediction(
     JsonDocument *prediction_data_ptr, JsonObject prediction)
 {
-    DynamicJsonDocument prediction_data = *prediction_data_ptr;
+    DynamicJsonDocument trip_array = (*prediction_data_ptr)["included"];
 
-    for (int i = 0; i < prediction_data["included"].size(); i++)
+    for (int i = 0; i < trip_array.size(); i++)
     {
-        JsonObject trip = prediction_data["included"][i];
+        JsonObject trip = trip_array[i];
         if (trip["id"] == prediction["relationships"]["trip"]["data"]["id"])
         {
             return trip;
