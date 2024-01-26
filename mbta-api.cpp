@@ -92,9 +92,19 @@ JsonObject find_first_prediction_for_direction(
     {
         prediction = prediction_array[i];
         int d = prediction["attributes"]["direction_id"];
+        String arr_time = prediction["attributes"]["arrival_time"];
+        String dep_time = prediction["attributes"]["departure_time"];
+        String status = prediction["attributes"]["status"];
         if (d == direction)
         {
-            return prediction;
+            if (!status.equals("null")) {
+                return prediction;
+            } else {
+                double arr_diff = diff_with_local_time(arr_time);
+                if (arr_diff > -30) {
+                    return prediction;
+                }
+            }
         }
     }
     return prediction;
