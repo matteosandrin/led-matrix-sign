@@ -4,11 +4,13 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#include "config.h"
 #include "time.h"
 
 #define MBTA_REQUEST                                                    \
   "https://api-v3.mbta.com/predictions?"                                \
-  "api_key=***REMOVED***&"                           \
+  "api_key=" MBTA_API_KEY                                               \
+  "&"                                                                   \
   "filter[stop]=place-harsq&"                                           \
   "filter[route]=Red&"                                                  \
   "fields[prediction]=arrival_time,departure_time,status,direction_id&" \
