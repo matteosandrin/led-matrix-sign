@@ -93,7 +93,6 @@ void setup() {
   setup_wifi();
   setup_time();
 
-  // Module configuration
   HUB75_I2S_CFG::i2s_pins _pins = {R1_PIN, G1_PIN,  B1_PIN, R2_PIN, G2_PIN,
                                    B2_PIN, A_PIN,   B_PIN,  C_PIN,  D_PIN,
                                    E_PIN,  LAT_PIN, OE_PIN, CLK_PIN};
@@ -124,6 +123,15 @@ void loop() {
   check_wifi_and_reconnect();
 }
 
+// Calculate the cursor position that aligns the given string to the right edge
+// of the screen. If the cursor position is left of min_x, then min_x is
+// returned instead.
+int justify_right(char *str, int char_width, int min_x) {
+  int num_characters = strlen(str);
+  int cursor_x = SCREEN_WIDTH - (num_characters * char_width);
+  return max(cursor_x, min_x);
+}
+
 void mbta_sign_mode_loop() {
   Serial.printf("[cycle %d] updating LED matrix\n", cycle);
   cycle++;
@@ -145,18 +153,16 @@ void mbta_sign_mode_loop() {
 
     dma_display->clearScreen();
 
-    int cursorX_01 =
-        min(110, (int)(SCREEN_WIDTH - strlen(predictions[0].value) * 10));
+    int cursor_x_1 = justify_right(predictions[0].value, 10, PANEL_RES_X * 3);
     dma_display->setCursor(0, 15);
     dma_display->print(predictions[0].label);
-    dma_display->setCursor(cursorX_01, 15);
+    dma_display->setCursor(cursor_x_1, 15);
     dma_display->print(predictions[0].value);
 
-    int cursorX_02 =
-        min(110, (int)(SCREEN_WIDTH - strlen(predictions[1].value) * 10));
+    int cursor_x_2 = justify_right(predictions[1].value, 10, PANEL_RES_X * 3);
     dma_display->setCursor(0, 31);
     dma_display->print(predictions[1].label);
-    dma_display->setCursor(cursorX_02, 31);
+    dma_display->setCursor(cursor_x_2, 31);
     dma_display->print(predictions[1].value);
   }
   print_ram_info();
