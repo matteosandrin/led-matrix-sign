@@ -94,7 +94,7 @@ JsonObject find_first_prediction_for_direction(
       if (!status.equals("null")) {
         return prediction;
       } else {
-        double arr_diff = diff_with_local_time(arr_time);
+        int arr_diff = diff_with_local_time(arr_time);
         if (arr_diff > -30) {
           return prediction;
         }
@@ -118,25 +118,29 @@ JsonObject find_trip_for_prediction(JsonDocument *prediction_data_ptr,
   return trip;
 }
 
-double diff_with_local_time(String timestring) {
+int diff_with_local_time(String timestring) {
   struct tm time;
   struct tm local_time;
   char timestring_char[32];
   timestring.toCharArray(timestring_char, 32);
   strptime(timestring_char, "%Y-%m-%dT%H:%M:%S", &time);
   getLocalTime(&local_time);
-  return time_diff(local_time, time);
+  return datetime_diff(local_time, time);
 }
 
-double time_diff(struct tm time1, struct tm time2) {
-  long start_seconds = time1.tm_sec + time1.tm_min * 60 + time1.tm_hour * 3600 +
-                       time1.tm_mday * 86400;
-  long end_seconds = time2.tm_sec + time2.tm_min * 60 + time2.tm_hour * 3600 +
-                     time2.tm_mday * 86400;
-  return end_seconds - start_seconds;
+int datetime_diff(struct tm time1, struct tm time2) {
+  return datetime_to_epoch(time2) - datetime_to_epoch(time1);
 }
 
-void determine_display_string(double arr_diff, double dep_diff, char *dst) {
+// source:
+// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_15
+int datetime_to_epoch(struct tm dt) {
+  return dt.tm_sec + dt.tm_min * 60 + dt.tm_hour * 3600 + dt.tm_yday * 86400 +
+         (dt.tm_year - 70) * 31536000 + ((dt.tm_year - 69) / 4) * 86400 -
+         ((dt.tm_year - 1) / 100) * 86400 + ((dt.tm_year + 299) / 400) * 86400;
+}
+
+void determine_display_string(int arr_diff, int dep_diff, char *dst) {
   if (arr_diff > 0) {
     if (arr_diff > 60) {
       int minutes = floor(arr_diff / 60.0);
@@ -169,8 +173,8 @@ void format_prediction(JsonObject prediction, JsonObject trip,
   getLocalTime(&local_time);
   char display_string[16];
   if (arr_time && arr_time.length() > 0 && dep_time && dep_time.length() > 0) {
-    double arr_diff = diff_with_local_time(arr_time);
-    double dep_diff = diff_with_local_time(dep_time);
+    int arr_diff = diff_with_local_time(arr_time);
+    int dep_diff = diff_with_local_time(dep_time);
     determine_display_string(arr_diff, dep_diff, display_string);
   } else {
     strcpy(display_string, "");
