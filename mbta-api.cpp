@@ -24,10 +24,10 @@ PredictionStatus get_mbta_predictions(Prediction dst[2]) {
   if (status != 0) {
     return PREDICTION_STATUS_ERROR;
   }
-  JsonObject prediction1 =
-      find_first_prediction_for_direction(prediction_data, 0);
-  JsonObject prediction2 =
-      find_first_prediction_for_direction(prediction_data, 1);
+  JsonObject prediction1 = find_first_prediction_for_direction(
+      prediction_data, DIRECTION_SOUTHBOUND);
+  JsonObject prediction2 = find_first_prediction_for_direction(
+      prediction_data, DIRECTION_NORTHBOUND);
   if (prediction1.isNull() || prediction2.isNull()) {
     return PREDICTION_STATUS_ERROR;
   }

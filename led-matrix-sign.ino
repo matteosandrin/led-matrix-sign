@@ -140,6 +140,7 @@ void mbta_sign_mode_loop() {
   dma_display->setTextWrap(false);
   dma_display->setTextColor(AMBER);
 
+  // Two predictions, one for southbound trains and one for northbound trains
   Prediction predictions[2];
   int status = get_mbta_predictions(predictions);
 

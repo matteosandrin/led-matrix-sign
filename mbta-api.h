@@ -1,5 +1,8 @@
 #include <ArduinoJson.h>
 
+#define DIRECTION_SOUTHBOUND 0
+#define DIRECTION_NORTHBOUND 1
+
 struct Prediction {
   char label[16];
   char value[16];
