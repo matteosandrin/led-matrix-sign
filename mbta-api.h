@@ -32,4 +32,5 @@ int datetime_diff(struct tm time1, struct tm time2);
 
 int datetime_to_epoch(struct tm dt);
 
-void determine_display_string(int arr_diff, int dep_diff, char *dst);
+void determine_display_string(int arr_diff, int dep_diff, String status,
+                              char *dst);

@@ -140,8 +140,16 @@ int datetime_to_epoch(struct tm dt) {
          ((dt.tm_year - 1) / 100) * 86400 + ((dt.tm_year + 299) / 400) * 86400;
 }
 
-void determine_display_string(int arr_diff, int dep_diff, char *dst) {
-  if (arr_diff > 0) {
+void determine_display_string(int arr_diff, int dep_diff, String status,
+                              char *dst) {
+  if (!status.equals("null")) {
+    status.toLowerCase();
+    if (status.indexOf("stopped") != -1) {
+      strcpy(dst, "STOP");
+    } else {
+      status.substring(0, 6).toCharArray(dst, 16);
+    }
+  } else if (arr_diff > 0) {
     if (arr_diff > 60) {
       int minutes = floor(arr_diff / 60.0);
       sprintf(dst, "%d min", minutes);
@@ -152,30 +160,29 @@ void determine_display_string(int arr_diff, int dep_diff, char *dst) {
     if (dep_diff > 0) {
       strcpy(dst, "BRD");
     } else {
-      strcpy(dst, "ERR");
+      strcpy(dst, "ERROR");
     }
   }
 }
 
 void format_prediction(JsonObject prediction, JsonObject trip,
                        Prediction *dst) {
+  char display_string[16];
+  struct tm local_time;
   String headsign = trip["attributes"]["headsign"];
   String arr_time = prediction["attributes"]["arrival_time"];
   String dep_time = prediction["attributes"]["departure_time"];
   String status = prediction["attributes"]["status"];
   headsign.toCharArray(dst->label, 16);
+  getLocalTime(&local_time);
   Serial.printf("status: %s %d\n", status, status == NULL);
   if (!status.equals("null")) {
-    status.substring(0, 7).toCharArray(dst->value, 16);
-    return;
-  }
-  struct tm local_time;
-  getLocalTime(&local_time);
-  char display_string[16];
-  if (arr_time && arr_time.length() > 0 && dep_time && dep_time.length() > 0) {
+    determine_display_string(-1, -1, status, display_string);
+  } else if (arr_time && arr_time.length() > 0 && dep_time &&
+             dep_time.length() > 0) {
     int arr_diff = diff_with_local_time(arr_time);
     int dep_diff = diff_with_local_time(dep_time);
-    determine_display_string(arr_diff, dep_diff, display_string);
+    determine_display_string(arr_diff, dep_diff, status, display_string);
   } else {
     strcpy(display_string, "");
   }
