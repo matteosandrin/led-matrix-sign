@@ -184,7 +184,7 @@ void format_prediction(JsonObject prediction, JsonObject trip,
     int dep_diff = diff_with_local_time(dep_time);
     determine_display_string(arr_diff, dep_diff, status, display_string);
   } else {
-    strcpy(display_string, "");
+    strcpy(display_string, "ERROR");
   }
   Serial.printf("display string: %s\n", display_string);
   strcpy(dst->value, display_string);
