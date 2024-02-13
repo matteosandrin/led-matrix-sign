@@ -18,12 +18,14 @@
 #define SCREEN_WIDTH PANEL_RES_X *PANEL_CHAIN
 #define SCREEN_HEIGHT PANEL_RES_Y
 
-#define SIGN_MODE_MBTA 0
-uint8_t SIGN_MODE = SIGN_MODE_MBTA;
+#define SIGN_MODE_TEST 0
+#define SIGN_MODE_MBTA 1
+uint8_t SIGN_MODE = SIGN_MODE_TEST;
 
 // MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 uint16_t AMBER = dma_display->color565(255, 191, 0);
+uint16_t WHITE = dma_display->color565(255, 255, 255);
 
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
@@ -114,6 +116,9 @@ void setup() {
 
 void loop() {
   switch (SIGN_MODE) {
+    case SIGN_MODE_TEST:
+      test_sign_mode_loop();
+      break;
     case SIGN_MODE_MBTA:
       mbta_sign_mode_loop();
       break;
@@ -130,6 +135,17 @@ int justify_right(char *str, int char_width, int min_x) {
   int num_characters = strlen(str);
   int cursor_x = SCREEN_WIDTH - (num_characters * char_width);
   return max(cursor_x, min_x);
+}
+
+void test_sign_mode_loop() {
+  dma_display->clearScreen();
+  dma_display->setFont(NULL);
+  dma_display->setTextColor(WHITE);
+  dma_display->setCursor(0, 0);
+  dma_display->print("0123456789\n");
+  dma_display->print("abcdefghijklmnopqrstuvwxyz\n");
+  dma_display->print("ABCDEFGHIJKLMNOPQRSTUVWXYZ\n");
+  delay(5000);
 }
 
 void mbta_sign_mode_loop() {
