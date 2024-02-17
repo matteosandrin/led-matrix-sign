@@ -21,6 +21,7 @@
 enum SignMode { SIGN_MODE_TEST, SIGN_MODE_MBTA, SIGN_MODE_MAX };
 
 struct MBTARenderContent {
+  PredictionStatus status;
   Prediction predictions[2];
 };
 
@@ -47,5 +48,6 @@ void test_provider_task(void *params);
 void mbta_provider_task(void *params);
 
 void button_tapped(Button2 &btn);
+void mbta_provider_timer(TimerHandle_t timer);
 
 #endif /* LED_MATRIX_SIGN_H */
