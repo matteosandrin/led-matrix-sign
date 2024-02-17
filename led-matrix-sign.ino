@@ -3,7 +3,10 @@
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include <WiFi.h>
 
+#include "Button2.h"
 #include "MBTASans.h"
+#include "FreeRTOSConfig.h"
+#include "freertos/task.h"
 #include "esp32-custom-pin-mapping.h"
 #include "mbta-api.h"
 #include "sntp.h"
@@ -20,7 +23,13 @@
 
 #define SIGN_MODE_TEST 0
 #define SIGN_MODE_MBTA 1
+#define SIGN_MODE_MAX 2
 uint8_t SIGN_MODE = SIGN_MODE_TEST;
+
+#define SIGN_MODE_BUTTON_PIN 32
+
+void button_loop(void *params);
+void button_tapped(Button2 &btn);
 
 // MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
@@ -34,6 +43,9 @@ unsigned long wifi_check_interval = 30000;  // 30s
 const char *ntpServer1 = "pool.ntp.org";
 const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
+
+Button2 button;
+TaskHandle_t button_loop_task;
 
 int cycle = 0;
 
@@ -112,6 +124,9 @@ void setup() {
   dma_display->begin();
   dma_display->setBrightness8(90);  // 0-255
   dma_display->clearScreen();
+
+  // Change mode button setup
+  xTaskCreatePinnedToCore(button_loop, "button_loop", 2048, NULL, 1, &button_loop_task, 1);
 }
 
 void loop() {
@@ -125,7 +140,26 @@ void loop() {
     default:
       break;
   }
+  int now = millis();
+  int original_sign_mode = SIGN_MODE;
+  while (millis() - now < 5000 && original_sign_mode == SIGN_MODE) {
+    delay(100);
+  }
   check_wifi_and_reconnect();
+}
+
+void button_loop(void *params) {
+  button.begin(SIGN_MODE_BUTTON_PIN);
+  button.setTapHandler(button_tapped);
+  while (1) {
+    button.loop();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+
+void button_tapped(Button2 &btn) {
+  Serial.println("button_tapped");
+  SIGN_MODE = (SIGN_MODE + 1) % SIGN_MODE_MAX;
 }
 
 // Calculate the cursor position that aligns the given string to the right edge
@@ -138,6 +172,7 @@ int justify_right(char *str, int char_width, int min_x) {
 }
 
 void test_sign_mode_loop() {
+  Serial.println("Executing [0] SIGN_MODE_TEST");
   dma_display->clearScreen();
   dma_display->setFont(NULL);
   dma_display->setTextColor(WHITE);
@@ -145,10 +180,10 @@ void test_sign_mode_loop() {
   dma_display->print("0123456789\n");
   dma_display->print("abcdefghijklmnopqrstuvwxyz\n");
   dma_display->print("ABCDEFGHIJKLMNOPQRSTUVWXYZ\n");
-  delay(5000);
 }
 
 void mbta_sign_mode_loop() {
+  Serial.println("Executing [1] SIGN_MODE_MBTA");
   Serial.printf("[cycle %d] updating LED matrix\n", cycle);
   cycle++;
   dma_display->setFont(&MBTASans);
@@ -182,7 +217,4 @@ void mbta_sign_mode_loop() {
     dma_display->setCursor(cursor_x_2, 31);
     dma_display->print(predictions[1].value);
   }
-  print_ram_info();
-  delay(5000);
-  Serial.print("\n\n\n");
 }
