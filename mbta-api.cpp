@@ -42,6 +42,13 @@ PredictionStatus get_mbta_predictions(Prediction dst[2]) {
   return PREDICTION_STATUS_OK;
 }
 
+void get_placeholder_predictions(Prediction dst[2]) {
+  strcpy(dst[0].label, "Ashmont");
+  strcpy(dst[0].value, "");
+  strcpy(dst[1].label, "Alewife");
+  strcpy(dst[1].value, "");
+}
+
 int fetch_predictions(JsonDocument *prediction_data) {
   if (wifi_client) {
     wifi_client->setInsecure();

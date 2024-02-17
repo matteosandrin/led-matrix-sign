@@ -19,6 +19,8 @@ enum PredictionStatus {
 
 PredictionStatus get_mbta_predictions(Prediction dst[2]);
 
+void get_placeholder_predictions(Prediction dst[2]);
+
 int fetch_predictions(JsonDocument *prediction_data);
 
 JsonObject find_first_prediction_for_direction(

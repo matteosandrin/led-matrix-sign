@@ -140,7 +140,7 @@ void setup() {
                           3,     // task priority
                           &system_task_handle, ESP32_CORE_0);
   xTaskCreatePinnedToCore(button_task, "button_task",
-                          1024,  // stack size
+                          2048,  // stack size
                           NULL,  // task parameters
                           2,     // task priority
                           &button_task_handle, ESP32_CORE_0);
@@ -168,7 +168,9 @@ void setup() {
                    NULL, mbta_provider_timer);
 }
 
-void loop() { check_wifi_and_reconnect(); }
+void loop() {
+  // check_wifi_and_reconnect();
+}
 
 // Calculate the cursor position that aligns the given string to the right edge
 // of the screen. If the cursor position is left of min_x, then min_x is
@@ -193,6 +195,7 @@ void render_mbta_content(MBTARenderContent content) {
   dma_display->setTextSize(1);
   dma_display->setTextWrap(false);
   dma_display->setTextColor(AMBER);
+  dma_display->clearScreen();
 
   if (content.status == PREDICTION_STATUS_OK) {
     Prediction *predictions = content.predictions;
@@ -200,8 +203,6 @@ void render_mbta_content(MBTARenderContent content) {
 
     Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
     Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
-
-    dma_display->clearScreen();
 
     int cursor_x_1 = justify_right(predictions[0].value, 10, PANEL_RES_X * 3);
     dma_display->setCursor(0, 15);
@@ -235,6 +236,9 @@ void system_task(void *params) {
       // pressed
       Serial.println("message received on the button_queue");
       current_sign_mode = (SignMode)((current_sign_mode + 1) % SIGN_MODE_MAX);
+      // empty all rendering queues
+      xQueueReset(render_request_queue);
+      xQueueReset(render_response_queue);
       // Notify all other tasks that the sign mode has changed
       xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
       // Stop all provider timers
@@ -251,8 +255,15 @@ void system_task(void *params) {
         if (xTimerReset(mbta_provider_timer_handle, TEN_MILLIS)) {
           Serial.println("starting mbta provider timer");
         }
+        // Send placeholder predictions while we wait for the real ones
+        RenderMessage message;
+        message.sign_mode = SIGN_MODE_MBTA;
+        message.mbta_content.status = PREDICTION_STATUS_OK;
+        get_placeholder_predictions((Prediction*)&message.mbta_content.predictions);
+        xQueueSend(render_response_queue, (void*)&message, TEN_MILLIS);
       }
     }
+    vTaskDelay(TEN_MILLIS);
   }
 }
 
@@ -269,6 +280,7 @@ void display_task(void *params) {
   while (1) {
     int current_sign_mode = -1;
     if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
+      vTaskDelay(TEN_MILLIS);
       continue;
     }
     RenderMessage message;
@@ -285,6 +297,7 @@ void display_task(void *params) {
             "Dropping the render message");
       }
     }
+    vTaskDelay(TEN_MILLIS);
   }
 }
 
