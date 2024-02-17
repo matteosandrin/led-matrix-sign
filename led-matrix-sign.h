@@ -18,28 +18,24 @@
 
 #define TEN_MILLIS 10 / portTICK_PERIOD_MS
 
-enum SignMode {
-    SIGN_MODE_TEST,
-    SIGN_MODE_MBTA,
-    SIGN_MODE_MAX
-};
+enum SignMode { SIGN_MODE_TEST, SIGN_MODE_MBTA, SIGN_MODE_MAX };
 
 struct MBTARenderContent {
-    Prediction predictions[2];
+  Prediction predictions[2];
 };
 
 struct TextRenderContent {
-    char text[128];
+  char text[128];
 };
 
 struct RenderMessage {
-    SignMode sign_mode;
-    MBTARenderContent mbta_content;
-    TextRenderContent text_content;
+  SignMode sign_mode;
+  MBTARenderContent mbta_content;
+  TextRenderContent text_content;
 };
 
 struct RenderRequest {
-    SignMode sign_mode;
+  SignMode sign_mode;
 };
 
 #define SIGN_MODE_BUTTON_PIN 32
