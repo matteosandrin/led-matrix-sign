@@ -1,5 +1,8 @@
 #include <ArduinoJson.h>
 
+#ifndef MBTA_API_H
+#define MBTA_API_H
+
 #define DIRECTION_SOUTHBOUND 0
 #define DIRECTION_NORTHBOUND 1
 
@@ -34,3 +37,5 @@ int datetime_to_epoch(struct tm dt);
 
 void determine_display_string(int arr_diff, int dep_diff, String status,
                               char *dst);
+
+#endif /* MBTA_API_H */

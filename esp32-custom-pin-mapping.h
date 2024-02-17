@@ -1,3 +1,6 @@
+#ifndef ESP32_CUSTOM_PIN_MAPPING_H
+#define ESP32_CUSTOM_PIN_MAPPING_H
+
 #define R1_PIN  25
 #define G1_PIN  26
 #define B1_PIN  27
@@ -14,3 +17,5 @@
 #define LAT_PIN 4
 #define OE_PIN  15
 #define CLK_PIN 16
+
+#endif /* ESP32_CUSTOM_PIN_MAPPING_H */
