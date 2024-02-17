@@ -259,8 +259,9 @@ void system_task(void *params) {
         RenderMessage message;
         message.sign_mode = SIGN_MODE_MBTA;
         message.mbta_content.status = PREDICTION_STATUS_OK;
-        get_placeholder_predictions((Prediction*)&message.mbta_content.predictions);
-        xQueueSend(render_response_queue, (void*)&message, TEN_MILLIS);
+        get_placeholder_predictions(
+            (Prediction *)&message.mbta_content.predictions);
+        xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
       }
     }
     vTaskDelay(TEN_MILLIS);
@@ -353,7 +354,8 @@ void mbta_provider_task(void *params) {
         // Two predictions, one for southbound trains and one for northbound
         // trains
         Prediction predictions[2];
-        PredictionStatus status = get_mbta_predictions(predictions);
+        PredictionStatus status = get_mbta_predictions_one_direction(
+            predictions, DIRECTION_SOUTHBOUND);
         message.mbta_content.status = status;
         if (status == PREDICTION_STATUS_OK) {
           message.mbta_content.predictions[0] = predictions[0];

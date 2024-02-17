@@ -19,27 +19,39 @@
 DynamicJsonDocument *prediction_data = new DynamicJsonDocument(8192);
 WiFiClientSecure *wifi_client = new WiFiClientSecure;
 
-PredictionStatus get_mbta_predictions(Prediction dst[2]) {
+PredictionStatus get_mbta_predictions(Prediction *dst, int num_predictions,
+                                      int directions[], int nth_positions[]) {
   int status = fetch_predictions(prediction_data);
   if (status != 0) {
     return PREDICTION_STATUS_ERROR;
   }
-  JsonObject prediction1 = find_first_prediction_for_direction(
-      prediction_data, DIRECTION_SOUTHBOUND);
-  JsonObject prediction2 = find_first_prediction_for_direction(
-      prediction_data, DIRECTION_NORTHBOUND);
-  if (prediction1.isNull() || prediction2.isNull()) {
-    return PREDICTION_STATUS_ERROR;
+  for (int i = 0; i < num_predictions; i++) {
+    JsonObject prediction = find_nth_prediction_for_direction(
+        prediction_data, directions[i], nth_positions[i]);
+    if (prediction.isNull()) {
+      return PREDICTION_STATUS_ERROR;
+    }
+    JsonObject trip = find_trip_for_prediction(prediction_data, prediction);
+    if (trip.isNull()) {
+      return PREDICTION_STATUS_ERROR;
+    }
+    format_prediction(prediction, trip, &dst[i]);
   }
-  JsonObject trip1 = find_trip_for_prediction(prediction_data, prediction1);
-  JsonObject trip2 = find_trip_for_prediction(prediction_data, prediction2);
-  if (trip1.isNull() || trip2.isNull()) {
-    return PREDICTION_STATUS_ERROR;
-  }
-  format_prediction(prediction1, trip1, &dst[0]);
-  format_prediction(prediction2, trip2, &dst[1]);
   prediction_data->clear();
   return PREDICTION_STATUS_OK;
+}
+
+PredictionStatus get_mbta_predictions_both_directions(Prediction dst[2]) {
+  int directions[2] = {DIRECTION_SOUTHBOUND, DIRECTION_NORTHBOUND};
+  int nth_positions[2] = {0, 0};
+  return get_mbta_predictions(dst, 2, directions, nth_positions);
+}
+
+PredictionStatus get_mbta_predictions_one_direction(Prediction dst[2],
+                                                    int direction) {
+  int directions[2] = {direction, direction};
+  int nth_positions[2] = {0, 1};
+  return get_mbta_predictions(dst, 2, directions, nth_positions);
 }
 
 void get_placeholder_predictions(Prediction dst[2]) {
@@ -86,8 +98,8 @@ int fetch_predictions(JsonDocument *prediction_data) {
   return 1;
 }
 
-JsonObject find_first_prediction_for_direction(
-    JsonDocument *prediction_data_ptr, int direction) {
+JsonObject find_nth_prediction_for_direction(JsonDocument *prediction_data_ptr,
+                                             int direction, int n) {
   JsonArray prediction_array = (*prediction_data_ptr)["data"];
   JsonObject prediction;
 
@@ -99,11 +111,19 @@ JsonObject find_first_prediction_for_direction(
     String status = prediction["attributes"]["status"];
     if (d == direction) {
       if (!status.equals("null")) {
-        return prediction;
+        if (n == 0) {
+          return prediction;
+        } else {
+          n--;
+        }
       } else {
         int arr_diff = diff_with_local_time(arr_time);
         if (arr_diff > -30) {
-          return prediction;
+          if (n == 0) {
+            return prediction;
+          } else {
+            n--;
+          }
         }
       }
     }

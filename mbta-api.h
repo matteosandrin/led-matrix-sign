@@ -17,14 +17,20 @@ enum PredictionStatus {
   PREDICTION_STATUS_SKIP
 };
 
-PredictionStatus get_mbta_predictions(Prediction dst[2]);
+PredictionStatus get_mbta_predictions(Prediction *dst, int num_predictions,
+                                      int directions[], int nth_positions[]);
+
+PredictionStatus get_mbta_predictions_both_directions(Prediction dst[2]);
+
+PredictionStatus get_mbta_predictions_one_direction(Prediction dst[2],
+                                                    int direction);
 
 void get_placeholder_predictions(Prediction dst[2]);
 
 int fetch_predictions(JsonDocument *prediction_data);
 
-JsonObject find_first_prediction_for_direction(
-    JsonDocument *prediction_data_ptr, int direction);
+JsonObject find_nth_prediction_for_direction(JsonDocument *prediction_data_ptr,
+                                             int direction, int n);
 
 JsonObject find_trip_for_prediction(JsonDocument *prediction_data_ptr,
                                     JsonObject prediction);
