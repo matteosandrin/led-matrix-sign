@@ -19,6 +19,8 @@
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 uint16_t AMBER = dma_display->color565(255, 191, 0);
 uint16_t WHITE = dma_display->color565(255, 255, 255);
+uint16_t BLACK = dma_display->color565(0, 0, 0);
+GFXcanvas16 canvas(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
@@ -187,44 +189,48 @@ int justify_right(char *str, int char_width, int min_x) {
 
 void render_text_content(TextRenderContent content, uint16_t color) {
   Serial.println("Rendering [0] SIGN_MODE_TEST");
-  dma_display->clearScreen();
-  dma_display->setFont(NULL);
-  dma_display->setTextColor(color);
-  dma_display->setCursor(0, 0);
-  dma_display->print(content.text);
+  canvas.fillScreen(BLACK);
+  canvas.setFont(NULL);
+  canvas.setTextColor(color);
+  canvas.setCursor(0, 0);
+  canvas.print(content.text);
+  dma_display->drawRGBBitmap(0, 0, canvas.getBuffer(), canvas.width(),
+                             canvas.height());
 }
 
 void render_mbta_content(MBTARenderContent content) {
   Serial.println("Rendering [1] SIGN_MODE_MBTA");
-  dma_display->setTextSize(1);
-  dma_display->setTextWrap(false);
-  dma_display->setTextColor(AMBER);
-  dma_display->clearScreen();
+  canvas.fillScreen(BLACK);
+  canvas.setTextSize(1);
+  canvas.setTextWrap(false);
+  canvas.setTextColor(AMBER);
 
   if (content.status == PREDICTION_STATUS_OK) {
     Prediction *predictions = content.predictions;
-    dma_display->setFont(&MBTASans);
+    canvas.setFont(&MBTASans);
 
     Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
     Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
 
     int cursor_x_1 = justify_right(predictions[0].value, 10, PANEL_RES_X * 3);
-    dma_display->setCursor(0, 15);
-    dma_display->print(predictions[0].label);
-    dma_display->setCursor(cursor_x_1, 15);
-    dma_display->print(predictions[0].value);
+    canvas.setCursor(0, 15);
+    canvas.print(predictions[0].label);
+    canvas.setCursor(cursor_x_1, 15);
+    canvas.print(predictions[0].value);
 
     int cursor_x_2 = justify_right(predictions[1].value, 10, PANEL_RES_X * 3);
-    dma_display->setCursor(0, 31);
-    dma_display->print(predictions[1].label);
-    dma_display->setCursor(cursor_x_2, 31);
-    dma_display->print(predictions[1].value);
+    canvas.setCursor(0, 31);
+    canvas.print(predictions[1].label);
+    canvas.setCursor(cursor_x_2, 31);
+    canvas.print(predictions[1].value);
   } else {
-    dma_display->setFont(NULL);
-    dma_display->setCursor(0, 0);
-    dma_display->print("Failed to fetch MBTA data");
+    canvas.setFont(NULL);
+    canvas.setCursor(0, 0);
+    canvas.print("Failed to fetch MBTA data");
     Serial.println("Failed to fetch MBTA data");
   }
+  dma_display->drawRGBBitmap(0, 0, canvas.getBuffer(), canvas.width(),
+                             canvas.height());
 }
 
 void system_task(void *params) {
