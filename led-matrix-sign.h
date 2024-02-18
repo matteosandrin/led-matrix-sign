@@ -41,8 +41,8 @@ struct RenderRequest {
 };
 
 enum UIMessageType {
-  UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON,
-  UI_MESSAGE_TYPE_MODE_CHANGE_WEB
+  UI_MESSAGE_TYPE_MODE_CHANGE,  // change to a specified sign mode
+  UI_MESSAGE_TYPE_MODE_SHIFT    // shift to the next available sign mode
 };
 
 struct UIMessage {

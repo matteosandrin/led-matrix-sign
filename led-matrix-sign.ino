@@ -117,7 +117,7 @@ void setup_webserver() {
       int sign_mode = sign_mode_str.toInt();
       if (0 <= sign_mode && sign_mode < SIGN_MODE_MAX) {
         UIMessage message;
-        message.type = UI_MESSAGE_TYPE_MODE_CHANGE_WEB;
+        message.type = UI_MESSAGE_TYPE_MODE_CHANGE;
         message.next_sign_mode = (SignMode)sign_mode;
         if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
           request->redirect("/");
@@ -168,6 +168,25 @@ void setup() {
   render_request_queue = xQueueCreate(4, sizeof(RenderRequest));
   render_response_queue = xQueueCreate(4, sizeof(RenderMessage));
 
+  // Timer setup
+  mbta_provider_timer_handle =
+      xTimerCreate("mbta_provider_timer",
+                   5000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, mbta_provider_timer);
+  wifi_reconnect_timer_handle =
+      xTimerCreate("wifi_reconnect_timer",
+                   30000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, check_wifi_and_reconnect_timer);
+  xTimerStart(wifi_reconnect_timer_handle, TEN_MILLIS);
+  button_loop_timer_handle =
+      xTimerCreate("button_loop_timer",
+                   TEN_MILLIS,  // timer interval in millisec
+                   true,        // is an autoreload timer (repeats periodically)
+                   NULL, [](TimerHandle_t t) { button.loop(); });
+  xTimerStart(button_loop_timer_handle, TEN_MILLIS);
+
   // Task setup
   //
   //  * The system task has highest priority (3)
@@ -199,25 +218,6 @@ void setup() {
                           NULL,  // task parameters
                           1,     // task priority
                           &test_provider_task_handle, ESP32_CORE_0);
-
-  // Timer setup
-  mbta_provider_timer_handle =
-      xTimerCreate("mbta_provider_timer",
-                   5000 / portTICK_PERIOD_MS,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
-                   NULL, mbta_provider_timer);
-  wifi_reconnect_timer_handle =
-      xTimerCreate("wifi_reconnect_timer",
-                   30000 / portTICK_PERIOD_MS,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
-                   NULL, check_wifi_and_reconnect_timer);
-  xTimerStart(wifi_reconnect_timer_handle, TEN_MILLIS);
-  button_loop_timer_handle =
-      xTimerCreate("button_loop_timer",
-                   TEN_MILLIS,  // timer interval in millisec
-                   true,        // is an autoreload timer (repeats periodically)
-                   NULL, [](TimerHandle_t t) { button.loop(); });
-  xTimerStart(button_loop_timer_handle, TEN_MILLIS);
 }
 
 void loop() {}
@@ -279,9 +279,11 @@ void render_mbta_content(MBTARenderContent content) {
 
 void system_task(void *params) {
   SignMode current_sign_mode = SIGN_MODE_MBTA;
-  RenderRequest initial_request{current_sign_mode};
-  xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
-  xQueueSend(render_request_queue, &initial_request, portMAX_DELAY);
+  UIMessage initial_message{
+      UI_MESSAGE_TYPE_MODE_CHANGE,  // type
+      SIGN_MODE_MBTA                // next_sign_mode
+  };
+  xQueueSend(ui_queue, &initial_message, portMAX_DELAY);
 
   while (1) {
     UIMessage ui_message;
@@ -289,9 +291,9 @@ void system_task(void *params) {
       // New message from the button queue. This means the button has been
       // pressed
       Serial.println("message received on the ui_queue");
-      if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON) {
+      if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT) {
         current_sign_mode = (SignMode)((current_sign_mode + 1) % SIGN_MODE_MAX);
-      } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE_WEB) {
+      } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
         current_sign_mode = ui_message.next_sign_mode;
       }
       // empty all rendering queues
@@ -300,12 +302,13 @@ void system_task(void *params) {
       // Notify all other tasks that the sign mode has changed
       xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
       // Stop all provider timers
-      if (xTimerStop(mbta_provider_timer_handle, TEN_MILLIS)) {
-        Serial.println("stopping mbta provider timer");
+      if (xTimerIsTimerActive(mbta_provider_timer_handle)) {
+        if (xTimerStop(mbta_provider_timer_handle, TEN_MILLIS)) {
+          Serial.println("stopping mbta provider timer");
+        }
       }
       // Request new render messages from the appropriate provider
-      RenderRequest request;
-      request.sign_mode = current_sign_mode;
+      RenderRequest request{current_sign_mode};
       if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
         Serial.println("sending render_request to render_request_queue");
       }
@@ -422,8 +425,7 @@ void mbta_provider_task(void *params) {
 
 void mbta_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
-  RenderRequest request;
-  request.sign_mode = SIGN_MODE_MBTA;
+  RenderRequest request{SIGN_MODE_MBTA};
   if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending mbta render_request to render_request_queue");
   }
@@ -432,6 +434,6 @@ void mbta_provider_timer(TimerHandle_t timer) {
 void button_tapped(Button2 &btn) {
   Serial.println("button_tapped function");
   UIMessage message;
-  message.type = UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON;
+  message.type = UI_MESSAGE_TYPE_MODE_SHIFT;
   xQueueSend(ui_queue, (void *)&message, TEN_MILLIS);
 }
