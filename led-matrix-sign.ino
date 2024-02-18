@@ -252,7 +252,7 @@ void render_mbta_content(MBTARenderContent content) {
 }
 
 void system_task(void *params) {
-  SignMode current_sign_mode = SIGN_MODE_TEST;
+  SignMode current_sign_mode = SIGN_MODE_MBTA;
   RenderRequest initial_request{current_sign_mode};
   xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
   xQueueSend(render_request_queue, &initial_request, portMAX_DELAY);
