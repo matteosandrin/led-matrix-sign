@@ -1,5 +1,5 @@
-#ifndef ESP32_CUSTOM_PIN_MAPPING_H
-#define ESP32_CUSTOM_PIN_MAPPING_H
+#ifndef LED_MATRIX_PINS_H
+#define LED_MATRIX_PINS_H
 
 #define R1_PIN  25
 #define G1_PIN  26
@@ -12,10 +12,10 @@
 #define B_PIN   19
 #define C_PIN   5
 #define D_PIN   17
-#define E_PIN   -1 // IMPORTANT: Change to a valid pin if using a 64x64px panel.
+#define E_PIN   -1 // Only required if panels are 64x64 or wider
             
 #define LAT_PIN 4
 #define OE_PIN  15
 #define CLK_PIN 16
 
-#endif /* ESP32_CUSTOM_PIN_MAPPING_H */
+#endif /* LED_MATRIX_PINS_H */

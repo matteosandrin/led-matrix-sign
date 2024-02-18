@@ -5,11 +5,11 @@
 
 #include "Button2.h"
 #include "FreeRTOSConfig.h"
-#include "esp32-custom-pin-mapping.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+#include "led-matrix-pins.h"
 #include "led-matrix-sign.h"
 #include "sntp.h"
 #include "src/mbta/MBTASans.h"
