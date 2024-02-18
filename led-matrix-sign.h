@@ -41,7 +41,6 @@ struct RenderRequest {
 
 #define SIGN_MODE_BUTTON_PIN 32
 
-void button_task(void *params);
 void system_task(void *params);
 void display_task(void *params);
 void test_provider_task(void *params);
@@ -50,5 +49,6 @@ void mbta_provider_task(void *params);
 void button_tapped(Button2 &btn);
 void mbta_provider_timer(TimerHandle_t timer);
 void check_wifi_and_reconnect_timer(TimerHandle_t timer);
+void button_loop_timer(TimerHandle_t timer);
 
 #endif /* LED_MATRIX_SIGN_H */

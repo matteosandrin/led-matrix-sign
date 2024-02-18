@@ -35,12 +35,12 @@ QueueHandle_t sign_mode_queue;
 QueueHandle_t render_request_queue;
 QueueHandle_t render_response_queue;
 TaskHandle_t system_task_handle;
-TaskHandle_t button_task_handle;
 TaskHandle_t display_task_handle;
 TaskHandle_t test_provider_task_handle;
 TaskHandle_t mbta_provider_task_handle;
 TimerHandle_t mbta_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
+TimerHandle_t button_loop_timer_handle;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -114,6 +114,10 @@ void setup() {
   dma_display->begin();
   dma_display->setBrightness8(90);  // 0-255
   dma_display->clearScreen();
+  
+  // Button setup
+  button.begin(SIGN_MODE_BUTTON_PIN);
+  button.setTapHandler(button_tapped);
 
   // Queue setup
   button_queue = xQueueCreate(32, sizeof(bool));
@@ -124,7 +128,7 @@ void setup() {
   // Task setup
   //
   //  * The system task has highest priority (3)
-  //  * The button and display tasks have medium priority (2)
+  //  * The display task has medium priority (2)
   //  * The provider tasks have low priority (1)
   //
   // The mbta_provider_task needs a deeper stack because it passes around a lot
@@ -137,11 +141,6 @@ void setup() {
                           NULL,  // task parameters
                           3,     // task priority
                           &system_task_handle, ESP32_CORE_0);
-  xTaskCreatePinnedToCore(button_task, "button_task",
-                          2048,  // stack size
-                          NULL,  // task parameters
-                          2,     // task priority
-                          &button_task_handle, ESP32_CORE_0);
   xTaskCreatePinnedToCore(display_task, "display_task",
                           4096,  // stack size
                           NULL,  // task parameters
@@ -170,6 +169,12 @@ void setup() {
                    true,  // is an autoreload timer (repeats periodically)
                    NULL, check_wifi_and_reconnect_timer);
   xTimerStart(wifi_reconnect_timer_handle, TEN_MILLIS);
+  button_loop_timer_handle =
+      xTimerCreate("button_loop_timer",
+                   TEN_MILLIS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, button_loop_timer);
+  xTimerStart(button_loop_timer_handle, TEN_MILLIS);
 }
 
 void loop() {}
@@ -266,15 +271,6 @@ void system_task(void *params) {
         xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
       }
     }
-    vTaskDelay(TEN_MILLIS);
-  }
-}
-
-void button_task(void *params) {
-  button.begin(SIGN_MODE_BUTTON_PIN);
-  button.setTapHandler(button_tapped);
-  while (1) {
-    button.loop();
     vTaskDelay(TEN_MILLIS);
   }
 }
@@ -380,6 +376,10 @@ void mbta_provider_timer(TimerHandle_t timer) {
   if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending mbta render_request to render_request_queue");
   }
+}
+
+void button_loop_timer(TimerHandle_t timer) {
+  button.loop();
 }
 
 void button_tapped(Button2 &btn) {
