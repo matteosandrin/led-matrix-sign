@@ -1,22 +1,21 @@
 #include <ArduinoJson.h>
 #include <AsyncTCP.h>
+#include <Button2.h>
 #include <ESP.h>
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <freertos/timers.h>
+#include <sntp.h>
+#include <time.h>
 
-#include "Button2.h"
-#include "FreeRTOSConfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
-#include "freertos/task.h"
-#include "freertos/timers.h"
 #include "led-matrix-pins.h"
 #include "led-matrix-sign.h"
-#include "sntp.h"
 #include "src/mbta/MBTASans.h"
 #include "src/mbta/mbta-api.h"
-#include "time.h"
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 uint16_t AMBER = dma_display->color565(255, 191, 0);

@@ -1,4 +1,5 @@
-#include "Button2.h"
+#include <Button2.h>
+
 #include "src/mbta/mbta-api.h"
 
 #ifndef LED_MATRIX_SIGN_H
