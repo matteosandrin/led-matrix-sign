@@ -20,6 +20,9 @@ MatrixPanel_I2S_DMA *dma_display = nullptr;
 uint16_t AMBER = dma_display->color565(255, 191, 0);
 uint16_t WHITE = dma_display->color565(255, 255, 255);
 uint16_t BLACK = dma_display->color565(0, 0, 0);
+// Using a GFXcanvas reduces the flicker when redrawing the screen, but uses a
+// lot of memory. (160 * 32 * 2 = 10240 bytes)
+// https://learn.adafruit.com/adafruit-gfx-graphics-library/minimizing-redraw-flicker
 GFXcanvas16 canvas(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 const char *ssid = "OliveBranch2.4GHz";
