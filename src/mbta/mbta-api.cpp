@@ -4,7 +4,7 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
-#include "config.h"
+#include "mbta-api-key.h"
 #include "time.h"
 
 #define MBTA_REQUEST                                                    \

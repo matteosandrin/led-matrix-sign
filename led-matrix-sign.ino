@@ -5,15 +5,15 @@
 
 #include "Button2.h"
 #include "FreeRTOSConfig.h"
-#include "MBTASans.h"
 #include "esp32-custom-pin-mapping.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "led-matrix-sign.h"
-#include "mbta-api.h"
 #include "sntp.h"
+#include "src/mbta/MBTASans.h"
+#include "src/mbta/mbta-api.h"
 #include "time.h"
 
 // MatrixPanel_I2S_DMA dma_display;
@@ -114,7 +114,7 @@ void setup() {
   dma_display->begin();
   dma_display->setBrightness8(90);  // 0-255
   dma_display->clearScreen();
-  
+
   // Button setup
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
@@ -172,7 +172,7 @@ void setup() {
   button_loop_timer_handle =
       xTimerCreate("button_loop_timer",
                    TEN_MILLIS,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
+                   true,        // is an autoreload timer (repeats periodically)
                    NULL, button_loop_timer);
   xTimerStart(button_loop_timer_handle, TEN_MILLIS);
 }
@@ -378,9 +378,7 @@ void mbta_provider_timer(TimerHandle_t timer) {
   }
 }
 
-void button_loop_timer(TimerHandle_t timer) {
-  button.loop();
-}
+void button_loop_timer(TimerHandle_t timer) { button.loop(); }
 
 void button_tapped(Button2 &btn) {
   Serial.println("button_tapped function");
