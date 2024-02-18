@@ -3,6 +3,7 @@
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <uri/UriBraces.h>
 
 #include "Button2.h"
 #include "FreeRTOSConfig.h"
@@ -34,7 +35,7 @@ const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
 Button2 button;
-QueueHandle_t button_queue;
+QueueHandle_t ui_queue;
 QueueHandle_t sign_mode_queue;
 QueueHandle_t render_request_queue;
 QueueHandle_t render_response_queue;
@@ -122,6 +123,7 @@ void setup() {
 
   // Webserver setup
   server.on("/", web_server_index);
+  server.on(UriBraces("/mode/{}"), web_server_mode);
   server.begin();
 
   // Button setup
@@ -129,7 +131,7 @@ void setup() {
   button.setTapHandler(button_tapped);
 
   // Queue setup
-  button_queue = xQueueCreate(32, sizeof(bool));
+  ui_queue = xQueueCreate(16, sizeof(UIMessage));
   sign_mode_queue = xQueueCreate(1, sizeof(SignMode));
   render_request_queue = xQueueCreate(4, sizeof(RenderRequest));
   render_response_queue = xQueueCreate(4, sizeof(RenderMessage));
@@ -256,12 +258,16 @@ void system_task(void *params) {
   xQueueSend(render_request_queue, &initial_request, portMAX_DELAY);
 
   while (1) {
-    bool is_button_tapped;
-    if (xQueueReceive(button_queue, &is_button_tapped, TEN_MILLIS)) {
+    UIMessage ui_message;
+    if (xQueueReceive(ui_queue, &ui_message, TEN_MILLIS)) {
       // New message from the button queue. This means the button has been
       // pressed
-      Serial.println("message received on the button_queue");
-      current_sign_mode = (SignMode)((current_sign_mode + 1) % SIGN_MODE_MAX);
+      Serial.println("message received on the ui_queue");
+      if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON) {
+        current_sign_mode = (SignMode)((current_sign_mode + 1) % SIGN_MODE_MAX);
+      } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE_WEB) {
+        current_sign_mode = ui_message.next_sign_mode;
+      }
       // empty all rendering queues
       xQueueReset(render_request_queue);
       xQueueReset(render_response_queue);
@@ -399,11 +405,41 @@ void mbta_provider_timer(TimerHandle_t timer) {
 
 void button_tapped(Button2 &btn) {
   Serial.println("button_tapped function");
-  bool is_button_tapped = true;
-  xQueueSend(button_queue, (void *)&is_button_tapped, TEN_MILLIS);
+  UIMessage message;
+  message.type = UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON;
+  xQueueSend(ui_queue, (void *)&message, TEN_MILLIS);
 }
 
 void web_server_index() {
-  Serial.println("New webserver connection on /");
-  server.send(200, "text/html", "Success!");
+  Serial.println("new webserver connection on /");
+  server.send(200, "text/html", R"(
+    <!DOCTYPE html/>
+    <head>
+      <title>LED Matrix Display</title>
+    </head>
+    <body>
+      <h1>LED Matrix Display</h1>
+      <ul>
+        <li><a href="/mode/0">SIGN_MODE_TEST</a></li>
+        <li><a href="/mode/1">SIGN_MODE_MBTA</a></li>
+      </ul>
+    </body>
+  )");
+}
+
+void web_server_mode() {
+  Serial.println("new webserver connection on " + server.uri());
+  String sign_mode_str = server.pathArg(0);
+  int sign_mode = sign_mode_str.toInt();
+  if (0 <= sign_mode && sign_mode < SIGN_MODE_MAX) {
+    UIMessage message;
+    message.type = UI_MESSAGE_TYPE_MODE_CHANGE_WEB;
+    message.next_sign_mode = (SignMode)sign_mode;
+    if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
+      server.sendHeader("Location", "/");
+      server.send(303, "text/plain", "");
+      return;
+    }
+  }
+  server.send(500, "text/plain", "invalid sign mode: " + sign_mode_str);
 }

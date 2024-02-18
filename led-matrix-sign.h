@@ -39,6 +39,16 @@ struct RenderRequest {
   SignMode sign_mode;
 };
 
+enum UIMessageType {
+  UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON,
+  UI_MESSAGE_TYPE_MODE_CHANGE_WEB
+};
+
+struct UIMessage {
+  UIMessageType type;
+  SignMode next_sign_mode;
+};
+
 #define SIGN_MODE_BUTTON_PIN 32
 
 void system_task(void *params);
@@ -51,5 +61,6 @@ void mbta_provider_timer(TimerHandle_t timer);
 void check_wifi_and_reconnect_timer(TimerHandle_t timer);
 
 void web_server_index();
+void web_server_mode();
 
 #endif /* LED_MATRIX_SIGN_H */
