@@ -49,6 +49,7 @@ void mbta_provider_task(void *params);
 void button_tapped(Button2 &btn);
 void mbta_provider_timer(TimerHandle_t timer);
 void check_wifi_and_reconnect_timer(TimerHandle_t timer);
-void button_loop_timer(TimerHandle_t timer);
+
+void web_server_index();
 
 #endif /* LED_MATRIX_SIGN_H */

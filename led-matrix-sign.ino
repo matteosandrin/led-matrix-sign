@@ -1,6 +1,7 @@
 #include <ArduinoJson.h>
 #include <ESP.h>
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
+#include <WebServer.h>
 #include <WiFi.h>
 
 #include "Button2.h"
@@ -25,6 +26,7 @@ uint16_t BLACK = dma_display->color565(0, 0, 0);
 // https://learn.adafruit.com/adafruit-gfx-graphics-library/minimizing-redraw-flicker
 GFXcanvas16 canvas(SCREEN_WIDTH, SCREEN_HEIGHT);
 
+WebServer server(80);
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
 const char *ntpServer1 = "pool.ntp.org";
@@ -43,6 +45,7 @@ TaskHandle_t mbta_provider_task_handle;
 TimerHandle_t mbta_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
+TimerHandle_t web_server_timer_handle;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -117,6 +120,10 @@ void setup() {
   dma_display->setBrightness8(90);  // 0-255
   dma_display->clearScreen();
 
+  // Webserver setup
+  server.on("/", web_server_index);
+  server.begin();
+
   // Button setup
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
@@ -175,8 +182,14 @@ void setup() {
       xTimerCreate("button_loop_timer",
                    TEN_MILLIS,  // timer interval in millisec
                    true,        // is an autoreload timer (repeats periodically)
-                   NULL, button_loop_timer);
+                   NULL, [](TimerHandle_t t) { button.loop(); });
   xTimerStart(button_loop_timer_handle, TEN_MILLIS);
+  web_server_timer_handle =
+      xTimerCreate("web_server_timer",
+                   100 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, [](TimerHandle_t t) { server.handleClient(); });
+  xTimerStart(web_server_timer_handle, TEN_MILLIS);
 }
 
 void loop() {}
@@ -384,10 +397,13 @@ void mbta_provider_timer(TimerHandle_t timer) {
   }
 }
 
-void button_loop_timer(TimerHandle_t timer) { button.loop(); }
-
 void button_tapped(Button2 &btn) {
   Serial.println("button_tapped function");
   bool is_button_tapped = true;
   xQueueSend(button_queue, (void *)&is_button_tapped, TEN_MILLIS);
+}
+
+void web_server_index() {
+  Serial.println("New webserver connection on /");
+  server.send(200, "text/html", "Success!");
 }
