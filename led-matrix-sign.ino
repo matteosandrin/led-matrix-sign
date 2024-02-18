@@ -16,15 +16,12 @@
 #include "src/mbta/mbta-api.h"
 #include "time.h"
 
-// MatrixPanel_I2S_DMA dma_display;
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 uint16_t AMBER = dma_display->color565(255, 191, 0);
 uint16_t WHITE = dma_display->color565(255, 255, 255);
 
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
-unsigned long wifi_previous_millis = millis();
-unsigned long wifi_check_interval = 30000;  // 30s
 const char *ntpServer1 = "pool.ntp.org";
 const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
