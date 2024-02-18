@@ -40,6 +40,7 @@ TaskHandle_t display_task_handle;
 TaskHandle_t test_provider_task_handle;
 TaskHandle_t mbta_provider_task_handle;
 TimerHandle_t mbta_provider_timer_handle;
+TimerHandle_t wifi_reconnect_timer_handle;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -54,14 +55,11 @@ void setup_wifi() {
   Serial.println(WiFi.RSSI());
 }
 
-void check_wifi_and_reconnect() {
-  unsigned long current_millis = millis();
-  if ((WiFi.status() != WL_CONNECTED) &&
-      (current_millis - wifi_previous_millis >= wifi_check_interval)) {
+void check_wifi_and_reconnect_timer(TimerHandle_t timer) {
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Wifi disconnected. Attempting to reconnect...");
     WiFi.disconnect();
     WiFi.reconnect();
-    wifi_previous_millis = current_millis;
   }
 }
 
@@ -163,14 +161,18 @@ void setup() {
   // Timer setup
   mbta_provider_timer_handle =
       xTimerCreate("mbta_provider_timer",
-                   5000 / portTICK_PERIOD_MS,  // timer interval in milliseconds
+                   5000 / portTICK_PERIOD_MS,  // timer interval in millisec
                    true,  // is an autoreload timer (repeats periodically)
                    NULL, mbta_provider_timer);
+  wifi_reconnect_timer_handle =
+      xTimerCreate("wifi_reconnect_timer",
+                   30000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, check_wifi_and_reconnect_timer);
+  xTimerStart(wifi_reconnect_timer_handle, TEN_MILLIS);
 }
 
-void loop() {
-  // check_wifi_and_reconnect();
-}
+void loop() {}
 
 // Calculate the cursor position that aligns the given string to the right edge
 // of the screen. If the cursor position is left of min_x, then min_x is
