@@ -1,9 +1,9 @@
 #include <ArduinoJson.h>
+#include <AsyncTCP.h>
 #include <ESP.h>
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
 #include <WiFi.h>
-#include <uri/UriBraces.h>
 
 #include "Button2.h"
 #include "FreeRTOSConfig.h"
@@ -27,7 +27,7 @@ uint16_t BLACK = dma_display->color565(0, 0, 0);
 // https://learn.adafruit.com/adafruit-gfx-graphics-library/minimizing-redraw-flicker
 GFXcanvas16 canvas(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-WebServer server(80);
+AsyncWebServer server(80);
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
 const char *ntpServer1 = "pool.ntp.org";
@@ -46,7 +46,6 @@ TaskHandle_t mbta_provider_task_handle;
 TimerHandle_t mbta_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
-TimerHandle_t web_server_timer_handle;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -97,6 +96,42 @@ void setup_time() {
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S%z");
 }
 
+void setup_webserver() {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", R"(
+        <!DOCTYPE html/>
+        <head>
+          <title>LED Matrix Display</title>
+        </head>
+        <body>
+          <h1>LED Matrix Display</h1>
+          <ul>
+            <li><a href="/mode?id=0">SIGN_MODE_TEST</a></li>
+            <li><a href="/mode?id=1">SIGN_MODE_MBTA</a></li>
+          </ul>
+        </body>
+      )");
+  });
+  server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("id")) {
+      String sign_mode_str = request->getParam("id")->value();
+      int sign_mode = sign_mode_str.toInt();
+      if (0 <= sign_mode && sign_mode < SIGN_MODE_MAX) {
+        UIMessage message;
+        message.type = UI_MESSAGE_TYPE_MODE_CHANGE_WEB;
+        message.next_sign_mode = (SignMode)sign_mode;
+        if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
+          request->redirect("/");
+          return;
+        }
+      }
+      request->send(500, "text/plain", "invalid sign mode: " + sign_mode_str);
+    }
+    request->send(500, "text/plain", "missing query parameter 'id'");
+  });
+  server.begin();
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial) continue;
@@ -122,9 +157,7 @@ void setup() {
   dma_display->clearScreen();
 
   // Webserver setup
-  server.on("/", web_server_index);
-  server.on(UriBraces("/mode/{}"), web_server_mode);
-  server.begin();
+  setup_webserver();
 
   // Button setup
   button.begin(SIGN_MODE_BUTTON_PIN);
@@ -186,12 +219,6 @@ void setup() {
                    true,        // is an autoreload timer (repeats periodically)
                    NULL, [](TimerHandle_t t) { button.loop(); });
   xTimerStart(button_loop_timer_handle, TEN_MILLIS);
-  web_server_timer_handle =
-      xTimerCreate("web_server_timer",
-                   100 / portTICK_PERIOD_MS,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
-                   NULL, [](TimerHandle_t t) { server.handleClient(); });
-  xTimerStart(web_server_timer_handle, TEN_MILLIS);
 }
 
 void loop() {}
@@ -408,38 +435,4 @@ void button_tapped(Button2 &btn) {
   UIMessage message;
   message.type = UI_MESSAGE_TYPE_MODE_CHANGE_BUTTON;
   xQueueSend(ui_queue, (void *)&message, TEN_MILLIS);
-}
-
-void web_server_index() {
-  Serial.println("new webserver connection on /");
-  server.send(200, "text/html", R"(
-    <!DOCTYPE html/>
-    <head>
-      <title>LED Matrix Display</title>
-    </head>
-    <body>
-      <h1>LED Matrix Display</h1>
-      <ul>
-        <li><a href="/mode/0">SIGN_MODE_TEST</a></li>
-        <li><a href="/mode/1">SIGN_MODE_MBTA</a></li>
-      </ul>
-    </body>
-  )");
-}
-
-void web_server_mode() {
-  Serial.println("new webserver connection on " + server.uri());
-  String sign_mode_str = server.pathArg(0);
-  int sign_mode = sign_mode_str.toInt();
-  if (0 <= sign_mode && sign_mode < SIGN_MODE_MAX) {
-    UIMessage message;
-    message.type = UI_MESSAGE_TYPE_MODE_CHANGE_WEB;
-    message.next_sign_mode = (SignMode)sign_mode;
-    if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
-      server.sendHeader("Location", "/");
-      server.send(303, "text/plain", "");
-      return;
-    }
-  }
-  server.send(500, "text/plain", "invalid sign mode: " + sign_mode_str);
 }
