@@ -19,7 +19,12 @@
 
 #define TEN_MILLIS 10 / portTICK_PERIOD_MS
 
-enum SignMode { SIGN_MODE_TEST, SIGN_MODE_MBTA, SIGN_MODE_MAX };
+enum SignMode {
+  SIGN_MODE_TEST,
+  SIGN_MODE_MBTA,
+  SIGN_MODE_STOPWATCH,
+  SIGN_MODE_MAX
+};
 
 struct MBTARenderContent {
   PredictionStatus status;
@@ -56,9 +61,11 @@ void system_task(void *params);
 void display_task(void *params);
 void test_provider_task(void *params);
 void mbta_provider_task(void *params);
+void stopwatch_provider_task(void *params);
 
 void button_tapped(Button2 &btn);
 void mbta_provider_timer(TimerHandle_t timer);
+void stopwatch_provider_timer(TimerHandle_t timer);
 void check_wifi_and_reconnect_timer(TimerHandle_t timer);
 
 void web_server_index();

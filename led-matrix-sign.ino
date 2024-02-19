@@ -42,7 +42,9 @@ TaskHandle_t system_task_handle;
 TaskHandle_t display_task_handle;
 TaskHandle_t test_provider_task_handle;
 TaskHandle_t mbta_provider_task_handle;
+TaskHandle_t stopwatch_provider_task_handle;
 TimerHandle_t mbta_provider_timer_handle;
+TimerHandle_t stopwatch_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
 
@@ -107,6 +109,7 @@ void setup_webserver() {
           <ul>
             <li><a href="/mode?id=0">SIGN_MODE_TEST</a></li>
             <li><a href="/mode?id=1">SIGN_MODE_MBTA</a></li>
+            <li><a href="/mode?id=2">SIGN_MODE_STOPWATCH</a></li>
           </ul>
         </body>
       )");
@@ -165,8 +168,8 @@ void setup() {
   // Queue setup
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
   sign_mode_queue = xQueueCreate(1, sizeof(SignMode));
-  render_request_queue = xQueueCreate(4, sizeof(RenderRequest));
-  render_response_queue = xQueueCreate(4, sizeof(RenderMessage));
+  render_request_queue = xQueueCreate(32, sizeof(RenderRequest));
+  render_response_queue = xQueueCreate(32, sizeof(RenderMessage));
 
   // Timer setup
   mbta_provider_timer_handle =
@@ -174,6 +177,11 @@ void setup() {
                    5000 / portTICK_PERIOD_MS,  // timer interval in millisec
                    true,  // is an autoreload timer (repeats periodically)
                    NULL, mbta_provider_timer);
+  stopwatch_provider_timer_handle =
+      xTimerCreate("stopwatch_provider_timer",
+                   16 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, stopwatch_provider_timer);
   wifi_reconnect_timer_handle =
       xTimerCreate("wifi_reconnect_timer",
                    30000 / portTICK_PERIOD_MS,  // timer interval in millisec
@@ -218,6 +226,11 @@ void setup() {
                           NULL,  // task parameters
                           1,     // task priority
                           &test_provider_task_handle, ESP32_CORE_0);
+  xTaskCreatePinnedToCore(stopwatch_provider_task, "stopwatch_provider_task",
+                          2048,  // stack size
+                          NULL,  // task parameters
+                          1,     // task priority
+                          &stopwatch_provider_task_handle, ESP32_CORE_0);  
 }
 
 void loop() {}
@@ -232,7 +245,7 @@ int justify_right(char *str, int char_width, int min_x) {
 }
 
 void render_text_content(TextRenderContent content, uint16_t color) {
-  Serial.println("Rendering [0] SIGN_MODE_TEST");
+  Serial.println("Rendering text content");
   canvas.fillScreen(BLACK);
   canvas.setFont(NULL);
   canvas.setTextColor(color);
@@ -243,7 +256,7 @@ void render_text_content(TextRenderContent content, uint16_t color) {
 }
 
 void render_mbta_content(MBTARenderContent content) {
-  Serial.println("Rendering [1] SIGN_MODE_MBTA");
+  Serial.println("Rendering mbta content");
   canvas.fillScreen(BLACK);
   canvas.setTextSize(1);
   canvas.setTextWrap(false);
@@ -296,6 +309,7 @@ void system_task(void *params) {
       } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
         current_sign_mode = ui_message.next_sign_mode;
       }
+      Serial.printf("system task setting sign mode: %d\n", current_sign_mode);
       // empty all rendering queues
       xQueueReset(render_request_queue);
       xQueueReset(render_response_queue);
@@ -305,6 +319,11 @@ void system_task(void *params) {
       if (xTimerIsTimerActive(mbta_provider_timer_handle)) {
         if (xTimerStop(mbta_provider_timer_handle, TEN_MILLIS)) {
           Serial.println("stopping mbta provider timer");
+        }
+      }
+      if (xTimerIsTimerActive(stopwatch_provider_timer_handle)) {
+        if (xTimerStop(stopwatch_provider_timer_handle, TEN_MILLIS)) {
+          Serial.println("stopping stopwatch provider timer");
         }
       }
       // Request new render messages from the appropriate provider
@@ -323,6 +342,10 @@ void system_task(void *params) {
         get_placeholder_predictions(
             (Prediction *)&message.mbta_content.predictions);
         xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+      } else if (current_sign_mode == SIGN_MODE_STOPWATCH) {
+        if (xTimerReset(stopwatch_provider_timer_handle, TEN_MILLIS)) {
+          Serial.println("starting stopwatch provider timer");
+        }
       }
     }
     vTaskDelay(TEN_MILLIS);
@@ -343,7 +366,9 @@ void display_task(void *params) {
           render_text_content(message.text_content, WHITE);
         } else if (message.sign_mode == SIGN_MODE_MBTA) {
           render_mbta_content(message.mbta_content);
-        }
+        } else if (message.sign_mode == SIGN_MODE_STOPWATCH) {
+          render_text_content(message.text_content, WHITE);
+        } 
       } else {
         Serial.println(
             "message.sign_type is different from current_sign_type. "
@@ -423,11 +448,57 @@ void mbta_provider_task(void *params) {
   }
 }
 
+void stopwatch_provider_task(void *params) {
+  TickType_t last_wake_time;
+  const TickType_t frequency = 16 / portTICK_PERIOD_MS;
+  last_wake_time = xTaskGetTickCount();
+  while (1) {
+    vTaskDelayUntil(&last_wake_time, frequency);
+    int current_sign_mode = -1;
+    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      continue;
+    }
+    if (current_sign_mode != SIGN_MODE_STOPWATCH) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      continue;
+    }
+    RenderRequest request;
+    if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
+      if (request.sign_mode == SIGN_MODE_STOPWATCH) {
+        xQueueReceive(render_request_queue, &request, TEN_MILLIS);
+        RenderMessage message;
+        message.sign_mode = SIGN_MODE_STOPWATCH;
+        unsigned long total_milliseconds = millis();
+        unsigned long total_seconds = total_milliseconds / 1000;
+        int hours = total_seconds / 3600;
+        int minutes = (total_seconds % 3600) / 60;
+        int seconds = total_seconds % 60;
+        int milliseconds = total_milliseconds % 1000;
+        sprintf(message.text_content.text, "%02d:%02d:%02d.%03d",
+                hours, minutes, seconds, milliseconds);
+        if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
+          Serial.println(
+              "sending stopwatch render_message to render_response_queue");
+        }
+      }
+    }
+  }
+}
+
 void mbta_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
   RenderRequest request{SIGN_MODE_MBTA};
   if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending mbta render_request to render_request_queue");
+  }
+}
+
+void stopwatch_provider_timer(TimerHandle_t timer) {
+  // Request new render messages from the appropriate provider
+  RenderRequest request{SIGN_MODE_STOPWATCH};
+  if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
+    Serial.println("sending stopwatch render_request to render_request_queue");
   }
 }
 
