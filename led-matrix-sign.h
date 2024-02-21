@@ -19,6 +19,21 @@
 
 #define TEN_MILLIS 10 / portTICK_PERIOD_MS
 #define REFRESH_RATE 17 / portTICK_PERIOD_MS // 60 FPS
+#define SIGN_MODE_BUTTON_PIN 32
+
+QueueHandle_t ui_queue;
+QueueHandle_t sign_mode_queue;
+QueueHandle_t render_request_queue;
+QueueHandle_t render_response_queue;
+TaskHandle_t system_task_handle;
+TaskHandle_t render_task_handle;
+TaskHandle_t test_provider_task_handle;
+TaskHandle_t mbta_provider_task_handle;
+TaskHandle_t clock_provider_task_handle;
+TimerHandle_t mbta_provider_timer_handle;
+TimerHandle_t clock_provider_timer_handle;
+TimerHandle_t wifi_reconnect_timer_handle;
+TimerHandle_t button_loop_timer_handle;
 
 enum SignMode {
   SIGN_MODE_TEST,
@@ -55,8 +70,6 @@ struct UIMessage {
   UIMessageType type;
   SignMode next_sign_mode;
 };
-
-#define SIGN_MODE_BUTTON_PIN 32
 
 void system_task(void *params);
 void display_task(void *params);

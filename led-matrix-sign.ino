@@ -34,19 +34,6 @@ const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
 Button2 button;
-QueueHandle_t ui_queue;
-QueueHandle_t sign_mode_queue;
-QueueHandle_t render_request_queue;
-QueueHandle_t render_response_queue;
-TaskHandle_t system_task_handle;
-TaskHandle_t render_task_handle;
-TaskHandle_t test_provider_task_handle;
-TaskHandle_t mbta_provider_task_handle;
-TaskHandle_t clock_provider_task_handle;
-TimerHandle_t mbta_provider_timer_handle;
-TimerHandle_t clock_provider_timer_handle;
-TimerHandle_t wifi_reconnect_timer_handle;
-TimerHandle_t button_loop_timer_handle;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
