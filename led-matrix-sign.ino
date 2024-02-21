@@ -39,7 +39,7 @@ QueueHandle_t sign_mode_queue;
 QueueHandle_t render_request_queue;
 QueueHandle_t render_response_queue;
 TaskHandle_t system_task_handle;
-TaskHandle_t display_task_handle;
+TaskHandle_t render_task_handle;
 TaskHandle_t test_provider_task_handle;
 TaskHandle_t mbta_provider_task_handle;
 TaskHandle_t clock_provider_task_handle;
@@ -198,24 +198,24 @@ void setup() {
   // Task setup
   //
   //  * The system task has highest priority (3)
-  //  * The display task has medium priority (2)
+  //  * The render task has medium priority (2)
   //  * The provider tasks have low priority (1)
   //
   // The mbta_provider_task needs a deeper stack because it passes around a lot
   // of JSON object as function arguments.
   //
-  // The display_task has its own reserved core, because I always want the
+  // The render_task has its own reserved core, because I always want the
   // the display to be ready to draw when it receives a new message.
   xTaskCreatePinnedToCore(system_task, "system_task",
                           2048,  // stack size
                           NULL,  // task parameters
                           3,     // task priority
                           &system_task_handle, ESP32_CORE_0);
-  xTaskCreatePinnedToCore(display_task, "display_task",
+  xTaskCreatePinnedToCore(render_task, "render_task",
                           4096,  // stack size
                           NULL,  // task parameters
                           2,     // task priority
-                          &display_task_handle, ESP32_CORE_1);
+                          &render_task_handle, ESP32_CORE_1);
   xTaskCreatePinnedToCore(mbta_provider_task, "mbta_provider_task",
                           8192,  // stack size
                           NULL,  // task parameters
@@ -352,7 +352,7 @@ void system_task(void *params) {
   }
 }
 
-void display_task(void *params) {
+void render_task(void *params) {
   TickType_t last_wake_time;
   last_wake_time = xTaskGetTickCount();
   while (1) {
