@@ -17,7 +17,7 @@
   "include=trip"
 
 DynamicJsonDocument *prediction_data = new DynamicJsonDocument(8192);
-WiFiClientSecure *wifi_client = new WiFiClientSecure;
+WiFiClientSecure *mbta_wifi_client = new WiFiClientSecure;
 
 PredictionStatus get_mbta_predictions(Prediction *dst, int num_predictions,
                                       int directions[], int nth_positions[]) {
@@ -62,10 +62,10 @@ void get_placeholder_predictions(Prediction dst[2]) {
 }
 
 int fetch_predictions(JsonDocument *prediction_data) {
-  if (wifi_client) {
-    wifi_client->setInsecure();
+  if (mbta_wifi_client) {
+    mbta_wifi_client->setInsecure();
     HTTPClient https;
-    if (https.begin(*wifi_client, MBTA_REQUEST)) {
+    if (https.begin(*mbta_wifi_client, MBTA_REQUEST)) {
       int httpCode = https.GET();
       Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
       if (httpCode > 0) {
