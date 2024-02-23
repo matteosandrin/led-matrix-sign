@@ -3,3 +3,4 @@ build
 CMakeLists.txt
 sdkconfig
 *.code-workspace
+spotify_auth.py
