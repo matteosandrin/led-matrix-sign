@@ -22,6 +22,7 @@ MatrixPanel_I2S_DMA *dma_display = nullptr;
 uint16_t AMBER = dma_display->color565(255, 191, 0);
 uint16_t WHITE = dma_display->color565(255, 255, 255);
 uint16_t BLACK = dma_display->color565(0, 0, 0);
+uint16_t SPOTIFY_GREEN = dma_display->color565(29, 185, 84);
 // Using a GFXcanvas reduces the flicker when redrawing the screen, but uses a
 // lot of memory. (160 * 32 * 2 = 10240 bytes)
 // https://learn.adafruit.com/adafruit-gfx-graphics-library/minimizing-redraw-flicker
@@ -117,6 +118,7 @@ void setup_webserver() {
             <li><a href="/mode?id=0">SIGN_MODE_TEST</a></li>
             <li><a href="/mode?id=1">SIGN_MODE_MBTA</a></li>
             <li><a href="/mode?id=2">SIGN_MODE_CLOCK</a></li>
+            <li><a href="/mode?id=3">SIGN_MODE_MUSIC</a></li>
           </ul>
         </body>
       )");
@@ -173,6 +175,11 @@ void setup() {
                    REFRESH_RATE,  // timer interval in millisec
                    true,  // is an autoreload timer (repeats periodically)
                    NULL, clock_provider_timer);
+  music_provider_timer_handle =
+      xTimerCreate("music_provider_timer",
+                   1000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, music_provider_timer);
   wifi_reconnect_timer_handle =
       xTimerCreate("wifi_reconnect_timer",
                    30000 / portTICK_PERIOD_MS,  // timer interval in millisec
@@ -222,6 +229,11 @@ void setup() {
                           NULL,  // task parameters
                           1,     // task priority
                           &clock_provider_task_handle, ESP32_CORE_0);
+  xTaskCreatePinnedToCore(music_provider_task, "music_provider_task",
+                          8192,  // stack size
+                          NULL,  // task parameters
+                          1,     // task priority
+                          &music_provider_task_handle, ESP32_CORE_0);
 }
 
 void loop() {}
@@ -317,6 +329,11 @@ void system_task(void *params) {
           Serial.println("stopping clock provider timer");
         }
       }
+      if (xTimerIsTimerActive(music_provider_timer_handle)) {
+        if (xTimerStop(music_provider_timer_handle, TEN_MILLIS)) {
+          Serial.println("stopping music provider timer");
+        }
+      }
       // Request new render messages from the appropriate provider
       RenderRequest request{current_sign_mode};
       if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
@@ -336,6 +353,10 @@ void system_task(void *params) {
       } else if (current_sign_mode == SIGN_MODE_CLOCK) {
         if (xTimerReset(clock_provider_timer_handle, TEN_MILLIS)) {
           Serial.println("starting clock provider timer");
+        }
+      } else if (current_sign_mode == SIGN_MODE_MUSIC) {
+        if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
+          Serial.println("starting music provider timer");
         }
       }
     }
@@ -361,6 +382,8 @@ void render_task(void *params) {
           render_mbta_content(message.mbta_content);
         } else if (message.sign_mode == SIGN_MODE_CLOCK) {
           render_text_content(message.text_content, WHITE);
+        } else if (message.sign_mode == SIGN_MODE_MUSIC) {
+          render_text_content(message.text_content, SPOTIFY_GREEN);
         }
       } else {
         Serial.println(
@@ -473,6 +496,45 @@ void clock_provider_task(void *params) {
   }
 }
 
+void music_provider_task(void *params) {
+  TickType_t last_wake_time;
+  last_wake_time = xTaskGetTickCount();
+  while (1) {
+    vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
+    int current_sign_mode = -1;
+    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      continue;
+    }
+    if (current_sign_mode != SIGN_MODE_MUSIC) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      continue;
+    }
+    RenderRequest request;
+    if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
+      if (request.sign_mode == SIGN_MODE_MUSIC) {
+        xQueueReceive(render_request_queue, &request, TEN_MILLIS);
+        RenderMessage message;
+        message.sign_mode = SIGN_MODE_MUSIC;
+        CurrentlyPlaying currently_playing;
+        SpotifyResponse status = get_currently_playing(&currently_playing);
+        if (status == SPOTIFY_RESPONSE_OK) {
+          sprintf(message.text_content.text, "%s\n%s", currently_playing.title,
+                  currently_playing.artist);
+        } else if (status == SPOTIFY_RESPONSE_EMPTY) {
+          sprintf(message.text_content.text, "Nothing is playing");
+        } else {
+          sprintf(message.text_content.text, "Error querying the spotify API");
+        }
+        if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
+          Serial.println(
+              "sending clock render_message to render_response_queue");
+        }
+      }
+    }
+  }
+}
+
 void mbta_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
   RenderRequest request{SIGN_MODE_MBTA};
@@ -486,6 +548,14 @@ void clock_provider_timer(TimerHandle_t timer) {
   RenderRequest request{SIGN_MODE_CLOCK};
   if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending clock render_request to render_request_queue");
+  }
+}
+
+void music_provider_timer(TimerHandle_t timer) {
+  // Request new render messages from the appropriate provider
+  RenderRequest request{SIGN_MODE_MUSIC};
+  if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
+    Serial.println("sending music render_request to render_request_queue");
   }
 }
 

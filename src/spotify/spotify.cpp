@@ -24,12 +24,25 @@ void setup_spotify() {
   //   Preferences preferences;
   //   preferences.begin("spotify");
   int status = refresh_token(access_token);
-  if (status != 0) {
+  if (status != SPOTIFY_RESPONSE_OK) {
     Serial.printf("Failed to refresh spotify token: %d\n", status);
   }
-  Serial.printf("New spotify token: %s\n", access_token);
-  fetch_currently_playing(currently_playing_response);
+}
+
+SpotifyResponse get_currently_playing(CurrentlyPlaying *dst) {
+  SpotifyResponse status = fetch_currently_playing(currently_playing_response);
+  if (status != SPOTIFY_RESPONSE_OK) {
+    return status;
+  }
   serializeJsonPretty(*currently_playing_response, Serial);
+  JsonObject currently_playing = (*currently_playing_response)["item"];
+  String artist = currently_playing["artists"][0]["name"];
+  String name = currently_playing["name"];
+  artist.toCharArray(dst->artist, 64);
+  name.toCharArray(dst->title, 64);
+  dst->duration_ms = currently_playing["duration_ms"];
+  dst->progress_ms = currently_playing["progress_ms"];
+  return SPOTIFY_RESPONSE_OK;
 }
 
 void get_refresh_bearer_token(char *dst) {
@@ -43,7 +56,7 @@ void get_api_bearer_token(char *dst) {
   sprintf(dst, "Bearer %s", access_token);
 }
 
-int refresh_token(char *dst) {
+SpotifyResponse refresh_token(char *dst) {
   if (spotify_wifi_client) {
     spotify_wifi_client->setInsecure();
     HTTPClient https;
@@ -62,19 +75,19 @@ int refresh_token(char *dst) {
           if (error) {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
-            return 1;
+            return SPOTIFY_RESPONSE_ERROR;
           }
           String access_code_str = (*refresh_token_response)["access_token"];
           access_code_str.toCharArray(dst, 256);
-          return 0;
+          return SPOTIFY_RESPONSE_OK;
         }
       }
     }
   }
-  return 1;
+  return SPOTIFY_RESPONSE_ERROR;
 }
 
-int fetch_currently_playing(JsonDocument *dst) {
+SpotifyResponse fetch_currently_playing(JsonDocument *dst) {
   if (spotify_wifi_client) {
     spotify_wifi_client->setInsecure();
     HTTPClient https;
@@ -100,12 +113,14 @@ int fetch_currently_playing(JsonDocument *dst) {
           if (error) {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
-            return 1;
+            return SPOTIFY_RESPONSE_ERROR;
           }
-          return 0;
+          return SPOTIFY_RESPONSE_OK;
+        } else if (httpCode == HTTP_CODE_NO_CONTENT) {
+          return SPOTIFY_RESPONSE_EMPTY;
         }
       }
     }
   }
-  return 1;
+  return SPOTIFY_RESPONSE_ERROR;
 }

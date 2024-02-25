@@ -18,20 +18,24 @@
 #define ESP32_CORE_1 1
 
 #define TEN_MILLIS 10 / portTICK_PERIOD_MS
-#define REFRESH_RATE 17 / portTICK_PERIOD_MS // 60 FPS
+#define REFRESH_RATE 17 / portTICK_PERIOD_MS  // 60 FPS
 #define SIGN_MODE_BUTTON_PIN 32
 
 QueueHandle_t ui_queue;
 QueueHandle_t sign_mode_queue;
 QueueHandle_t render_request_queue;
 QueueHandle_t render_response_queue;
+
 TaskHandle_t system_task_handle;
 TaskHandle_t render_task_handle;
 TaskHandle_t test_provider_task_handle;
 TaskHandle_t mbta_provider_task_handle;
 TaskHandle_t clock_provider_task_handle;
+TaskHandle_t music_provider_task_handle;
+
 TimerHandle_t mbta_provider_timer_handle;
 TimerHandle_t clock_provider_timer_handle;
+TimerHandle_t music_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
 
@@ -39,6 +43,7 @@ enum SignMode {
   SIGN_MODE_TEST,
   SIGN_MODE_MBTA,
   SIGN_MODE_CLOCK,
+  SIGN_MODE_MUSIC,
   SIGN_MODE_MAX
 };
 
