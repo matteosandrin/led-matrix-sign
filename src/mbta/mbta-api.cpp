@@ -33,7 +33,8 @@ PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
     if (prediction.isNull()) {
       return PREDICTION_STATUS_ERROR;
     }
-    JsonObject trip = this->find_trip_for_prediction(this->prediction_data, prediction);
+    JsonObject trip =
+        this->find_trip_for_prediction(this->prediction_data, prediction);
     if (trip.isNull()) {
       return PREDICTION_STATUS_ERROR;
     }
