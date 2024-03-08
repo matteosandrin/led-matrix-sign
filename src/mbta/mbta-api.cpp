@@ -18,7 +18,7 @@
 
 MBTA::MBTA() {
   prediction_data = new DynamicJsonDocument(8192);
-  mbta_wifi_client = new WiFiClientSecure;
+  wifi_client = new WiFiClientSecure;
 }
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
@@ -64,10 +64,10 @@ void MBTA::get_placeholder_predictions(Prediction dst[2]) {
 }
 
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
-  if (mbta_wifi_client) {
-    mbta_wifi_client->setInsecure();
+  if (wifi_client) {
+    wifi_client->setInsecure();
     HTTPClient https;
-    if (https.begin(*mbta_wifi_client, MBTA_REQUEST)) {
+    if (https.begin(*wifi_client, MBTA_REQUEST)) {
       int httpCode = https.GET();
       Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
       if (httpCode > 0) {

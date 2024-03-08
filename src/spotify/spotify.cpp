@@ -16,7 +16,7 @@
   "refresh_token=" SPOTIFY_REFRESH_TOKEN
 
 Spotify::Spotify() {
-  spotify_wifi_client = new WiFiClientSecure;
+  wifi_client = new WiFiClientSecure;
   refresh_token_response = new DynamicJsonDocument(2048);
   currently_playing_response = new DynamicJsonDocument(2048);
 }
@@ -58,10 +58,10 @@ void Spotify::get_api_bearer_token(char *dst) {
 }
 
 SpotifyResponse Spotify::refresh_token(char *dst) {
-  if (spotify_wifi_client) {
-    spotify_wifi_client->setInsecure();
+  if (wifi_client) {
+    wifi_client->setInsecure();
     HTTPClient https;
-    if (https.begin(*spotify_wifi_client, SPOTIFY_REFRESH_TOKEN_URL)) {
+    if (https.begin(*wifi_client, SPOTIFY_REFRESH_TOKEN_URL)) {
       char bearer[256];
       get_refresh_bearer_token(bearer);
       https.addHeader("Authorization", bearer);
@@ -89,10 +89,10 @@ SpotifyResponse Spotify::refresh_token(char *dst) {
 }
 
 SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
-  if (spotify_wifi_client) {
-    spotify_wifi_client->setInsecure();
+  if (wifi_client) {
+    wifi_client->setInsecure();
     HTTPClient https;
-    if (https.begin(*spotify_wifi_client, SPOTIFY_CURRENTLY_PLAYING_URL)) {
+    if (https.begin(*wifi_client, SPOTIFY_CURRENTLY_PLAYING_URL)) {
       char bearer[256];
       get_api_bearer_token(bearer);
       https.addHeader("Authorization", bearer);

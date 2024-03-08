@@ -20,7 +20,7 @@ enum PredictionStatus {
 
 class MBTA {
   DynamicJsonDocument *prediction_data;
-  WiFiClientSecure *mbta_wifi_client;
+  WiFiClientSecure *wifi_client;
   PredictionStatus get_predictions(Prediction *dst, int num_predictions,
                                    int directions[], int nth_positions[]);
   int fetch_predictions(JsonDocument *prediction_data);

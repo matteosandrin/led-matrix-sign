@@ -19,7 +19,7 @@ struct CurrentlyPlaying {
 
 class Spotify {
   char access_token[256];
-  WiFiClientSecure *spotify_wifi_client;
+  WiFiClientSecure *wifi_client;
   DynamicJsonDocument *refresh_token_response;
   DynamicJsonDocument *currently_playing_response;
   SpotifyResponse fetch_currently_playing(JsonDocument *dst);
