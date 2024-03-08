@@ -1,6 +1,7 @@
 #include <Button2.h>
 
 #include "src/mbta/mbta-api.h"
+#include "src/spotify/spotify.h"
 
 #ifndef LED_MATRIX_SIGN_H
 #define LED_MATRIX_SIGN_H
@@ -56,10 +57,16 @@ struct TextRenderContent {
   char text[128];
 };
 
+struct MusicRenderContent {
+  SpotifyResponse status;
+  CurrentlyPlaying data;
+};
+
 struct RenderMessage {
   SignMode sign_mode;
   MBTARenderContent mbta_content;
   TextRenderContent text_content;
+  MusicRenderContent music_content;
 };
 
 struct RenderRequest {

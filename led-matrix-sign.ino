@@ -109,7 +109,7 @@ void setup_display() {
 
 void display_log(char *message) {
   dma_display->clearScreen();
-  dma_display->setCursor(0,0);
+  dma_display->setCursor(0, 0);
   dma_display->setTextWrap(true);
   dma_display->print(message);
   dma_display->setTextWrap(false);
@@ -314,6 +314,25 @@ void render_mbta_content(MBTARenderContent content) {
                              canvas.height());
 }
 
+void render_music_content(MusicRenderContent content) {
+  Serial.println("Rendering music content");
+  canvas.fillScreen(BLACK);
+  canvas.setFont(NULL);
+  canvas.setTextColor(SPOTIFY_GREEN);
+  canvas.setCursor(0, 0);
+  if (content.status == SPOTIFY_RESPONSE_OK) {
+    CurrentlyPlaying playing = content.data;
+    canvas.println(playing.title);
+    canvas.println(playing.artist);
+  } else if (content.status == SPOTIFY_RESPONSE_EMPTY) {
+    canvas.print("Nothing is playing");
+  } else {
+    canvas.print("Error querying the spotify API");
+  }
+  dma_display->drawRGBBitmap(0, 0, canvas.getBuffer(), canvas.width(),
+                             canvas.height());
+}
+
 void system_task(void *params) {
   SignMode current_sign_mode = SIGN_MODE_MBTA;
   UIMessage initial_message{
@@ -409,7 +428,7 @@ void render_task(void *params) {
         } else if (message.sign_mode == SIGN_MODE_CLOCK) {
           render_text_content(message.text_content, WHITE);
         } else if (message.sign_mode == SIGN_MODE_MUSIC) {
-          render_text_content(message.text_content, SPOTIFY_GREEN);
+          render_music_content(message.music_content);
         }
       } else {
         Serial.println(
@@ -545,13 +564,9 @@ void music_provider_task(void *params) {
         CurrentlyPlaying currently_playing;
         SpotifyResponse status =
             spotify.get_currently_playing(&currently_playing);
+        message.music_content.status = status;
         if (status == SPOTIFY_RESPONSE_OK) {
-          sprintf(message.text_content.text, "%s\n%s", currently_playing.title,
-                  currently_playing.artist);
-        } else if (status == SPOTIFY_RESPONSE_EMPTY) {
-          sprintf(message.text_content.text, "Nothing is playing");
-        } else {
-          sprintf(message.text_content.text, "Error querying the spotify API");
+          message.music_content.data = currently_playing;
         }
         if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
           Serial.println(
