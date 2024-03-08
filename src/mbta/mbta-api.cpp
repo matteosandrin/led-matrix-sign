@@ -17,43 +17,43 @@
   "include=trip"
 
 MBTA::MBTA() {
-  prediction_data = new DynamicJsonDocument(8192);
-  wifi_client = new WiFiClientSecure;
+  this->prediction_data = new DynamicJsonDocument(8192);
+  this->wifi_client = new WiFiClientSecure;
 }
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
                                        int directions[], int nth_positions[]) {
-  int status = fetch_predictions(prediction_data);
+  int status = this->fetch_predictions(this->prediction_data);
   if (status != 0) {
     return PREDICTION_STATUS_ERROR;
   }
   for (int i = 0; i < num_predictions; i++) {
-    JsonObject prediction = find_nth_prediction_for_direction(
-        prediction_data, directions[i], nth_positions[i]);
+    JsonObject prediction = this->find_nth_prediction_for_direction(
+        this->prediction_data, directions[i], nth_positions[i]);
     if (prediction.isNull()) {
       return PREDICTION_STATUS_ERROR;
     }
-    JsonObject trip = find_trip_for_prediction(prediction_data, prediction);
+    JsonObject trip = this->find_trip_for_prediction(this->prediction_data, prediction);
     if (trip.isNull()) {
       return PREDICTION_STATUS_ERROR;
     }
-    format_prediction(prediction, trip, &dst[i]);
+    this->format_prediction(prediction, trip, &dst[i]);
   }
-  prediction_data->clear();
+  this->prediction_data->clear();
   return PREDICTION_STATUS_OK;
 }
 
 PredictionStatus MBTA::get_predictions_both_directions(Prediction dst[2]) {
   int directions[2] = {DIRECTION_SOUTHBOUND, DIRECTION_NORTHBOUND};
   int nth_positions[2] = {0, 0};
-  return get_predictions(dst, 2, directions, nth_positions);
+  return this->get_predictions(dst, 2, directions, nth_positions);
 }
 
 PredictionStatus MBTA::get_predictions_one_direction(Prediction dst[2],
                                                      int direction) {
   int directions[2] = {direction, direction};
   int nth_positions[2] = {0, 1};
-  return get_predictions(dst, 2, directions, nth_positions);
+  return this->get_predictions(dst, 2, directions, nth_positions);
 }
 
 void MBTA::get_placeholder_predictions(Prediction dst[2]) {
@@ -64,10 +64,10 @@ void MBTA::get_placeholder_predictions(Prediction dst[2]) {
 }
 
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
-  if (wifi_client) {
-    wifi_client->setInsecure();
+  if (this->wifi_client) {
+    this->wifi_client->setInsecure();
     HTTPClient https;
-    if (https.begin(*wifi_client, MBTA_REQUEST)) {
+    if (https.begin(*this->wifi_client, MBTA_REQUEST)) {
       int httpCode = https.GET();
       Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
       if (httpCode > 0) {
@@ -119,7 +119,7 @@ JsonObject MBTA::find_nth_prediction_for_direction(
           n--;
         }
       } else {
-        int arr_diff = diff_with_local_time(arr_time);
+        int arr_diff = this->diff_with_local_time(arr_time);
         if (arr_diff > -30) {
           if (n == 0) {
             return prediction;
@@ -154,11 +154,11 @@ int MBTA::diff_with_local_time(String timestring) {
   timestring.toCharArray(timestring_char, 32);
   strptime(timestring_char, "%Y-%m-%dT%H:%M:%S", &time);
   getLocalTime(&local_time);
-  return datetime_diff(local_time, time);
+  return this->datetime_diff(local_time, time);
 }
 
 int MBTA::datetime_diff(struct tm time1, struct tm time2) {
-  return datetime_to_epoch(time2) - datetime_to_epoch(time1);
+  return this->datetime_to_epoch(time2) - this->datetime_to_epoch(time1);
 }
 
 // source:
@@ -208,12 +208,12 @@ void MBTA::format_prediction(JsonObject prediction, JsonObject trip,
   getLocalTime(&local_time);
   Serial.printf("status: %s\n", status_char);
   if (!status.equals("null")) {
-    determine_display_string(-1, -1, status, display_string);
+    this->determine_display_string(-1, -1, status, display_string);
   } else if (arr_time && arr_time.length() > 0 && dep_time &&
              dep_time.length() > 0) {
-    int arr_diff = diff_with_local_time(arr_time);
-    int dep_diff = diff_with_local_time(dep_time);
-    determine_display_string(arr_diff, dep_diff, status, display_string);
+    int arr_diff = this->diff_with_local_time(arr_time);
+    int dep_diff = this->diff_with_local_time(dep_time);
+    this->determine_display_string(arr_diff, dep_diff, status, display_string);
   } else {
     strcpy(display_string, "ERROR");
   }
