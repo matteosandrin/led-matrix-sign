@@ -355,6 +355,11 @@ void system_task(void *params) {
           Serial.println("starting clock provider timer");
         }
       } else if (current_sign_mode == SIGN_MODE_MUSIC) {
+        // Send placeholder music info while we wait for the real info
+        RenderMessage message;
+        message.sign_mode = SIGN_MODE_MUSIC;
+        sprintf(message.text_content.text, "Nothing is playing");
+        xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
         if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
           Serial.println("starting music provider timer");
         }
