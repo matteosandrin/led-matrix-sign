@@ -195,14 +195,16 @@ void determine_display_string(int arr_diff, int dep_diff, String status,
 void format_prediction(JsonObject prediction, JsonObject trip,
                        Prediction *dst) {
   char display_string[16];
+  char status_char[32];
   struct tm local_time;
   String headsign = trip["attributes"]["headsign"];
   String arr_time = prediction["attributes"]["arrival_time"];
   String dep_time = prediction["attributes"]["departure_time"];
   String status = prediction["attributes"]["status"];
   headsign.toCharArray(dst->label, 16);
+  status.toCharArray(status_char, 32);
   getLocalTime(&local_time);
-  Serial.printf("status: %s %d\n", status, status == NULL);
+  Serial.printf("status: %s\n", status_char);
   if (!status.equals("null")) {
     determine_display_string(-1, -1, status, display_string);
   } else if (arr_time && arr_time.length() > 0 && dep_time &&
