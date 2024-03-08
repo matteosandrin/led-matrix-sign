@@ -16,11 +16,13 @@
   "fields[prediction]=arrival_time,departure_time,status,direction_id&" \
   "include=trip"
 
-DynamicJsonDocument *prediction_data = new DynamicJsonDocument(8192);
-WiFiClientSecure *mbta_wifi_client = new WiFiClientSecure;
+MBTA::MBTA() {
+  prediction_data = new DynamicJsonDocument(8192);
+  mbta_wifi_client = new WiFiClientSecure;
+}
 
-PredictionStatus get_mbta_predictions(Prediction *dst, int num_predictions,
-                                      int directions[], int nth_positions[]) {
+PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
+                                       int directions[], int nth_positions[]) {
   int status = fetch_predictions(prediction_data);
   if (status != 0) {
     return PREDICTION_STATUS_ERROR;
@@ -41,27 +43,27 @@ PredictionStatus get_mbta_predictions(Prediction *dst, int num_predictions,
   return PREDICTION_STATUS_OK;
 }
 
-PredictionStatus get_mbta_predictions_both_directions(Prediction dst[2]) {
+PredictionStatus MBTA::get_predictions_both_directions(Prediction dst[2]) {
   int directions[2] = {DIRECTION_SOUTHBOUND, DIRECTION_NORTHBOUND};
   int nth_positions[2] = {0, 0};
-  return get_mbta_predictions(dst, 2, directions, nth_positions);
+  return get_predictions(dst, 2, directions, nth_positions);
 }
 
-PredictionStatus get_mbta_predictions_one_direction(Prediction dst[2],
-                                                    int direction) {
+PredictionStatus MBTA::get_predictions_one_direction(Prediction dst[2],
+                                                     int direction) {
   int directions[2] = {direction, direction};
   int nth_positions[2] = {0, 1};
-  return get_mbta_predictions(dst, 2, directions, nth_positions);
+  return get_predictions(dst, 2, directions, nth_positions);
 }
 
-void get_placeholder_predictions(Prediction dst[2]) {
+void MBTA::get_placeholder_predictions(Prediction dst[2]) {
   strcpy(dst[0].label, "Ashmont");
   strcpy(dst[0].value, "");
   strcpy(dst[1].label, "Alewife");
   strcpy(dst[1].value, "");
 }
 
-int fetch_predictions(JsonDocument *prediction_data) {
+int MBTA::fetch_predictions(JsonDocument *prediction_data) {
   if (mbta_wifi_client) {
     mbta_wifi_client->setInsecure();
     HTTPClient https;
@@ -98,8 +100,8 @@ int fetch_predictions(JsonDocument *prediction_data) {
   return 1;
 }
 
-JsonObject find_nth_prediction_for_direction(JsonDocument *prediction_data_ptr,
-                                             int direction, int n) {
+JsonObject MBTA::find_nth_prediction_for_direction(
+    JsonDocument *prediction_data_ptr, int direction, int n) {
   JsonArray prediction_array = (*prediction_data_ptr)["data"];
   JsonObject prediction;
 
@@ -131,8 +133,8 @@ JsonObject find_nth_prediction_for_direction(JsonDocument *prediction_data_ptr,
   return prediction;
 }
 
-JsonObject find_trip_for_prediction(JsonDocument *prediction_data_ptr,
-                                    JsonObject prediction) {
+JsonObject MBTA::find_trip_for_prediction(JsonDocument *prediction_data_ptr,
+                                          JsonObject prediction) {
   JsonArray trip_array = (*prediction_data_ptr)["included"];
   JsonObject trip;
 
@@ -145,7 +147,7 @@ JsonObject find_trip_for_prediction(JsonDocument *prediction_data_ptr,
   return trip;
 }
 
-int diff_with_local_time(String timestring) {
+int MBTA::diff_with_local_time(String timestring) {
   struct tm time;
   struct tm local_time;
   char timestring_char[32];
@@ -155,20 +157,20 @@ int diff_with_local_time(String timestring) {
   return datetime_diff(local_time, time);
 }
 
-int datetime_diff(struct tm time1, struct tm time2) {
+int MBTA::datetime_diff(struct tm time1, struct tm time2) {
   return datetime_to_epoch(time2) - datetime_to_epoch(time1);
 }
 
 // source:
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_15
-int datetime_to_epoch(struct tm dt) {
+int MBTA::datetime_to_epoch(struct tm dt) {
   return dt.tm_sec + dt.tm_min * 60 + dt.tm_hour * 3600 + dt.tm_yday * 86400 +
          (dt.tm_year - 70) * 31536000 + ((dt.tm_year - 69) / 4) * 86400 -
          ((dt.tm_year - 1) / 100) * 86400 + ((dt.tm_year + 299) / 400) * 86400;
 }
 
-void determine_display_string(int arr_diff, int dep_diff, String status,
-                              char *dst) {
+void MBTA::determine_display_string(int arr_diff, int dep_diff, String status,
+                                    char *dst) {
   if (!status.equals("null")) {
     status.toLowerCase();
     if (status.indexOf("stopped") != -1) {
@@ -192,8 +194,8 @@ void determine_display_string(int arr_diff, int dep_diff, String status,
   }
 }
 
-void format_prediction(JsonObject prediction, JsonObject trip,
-                       Prediction *dst) {
+void MBTA::format_prediction(JsonObject prediction, JsonObject trip,
+                             Prediction *dst) {
   char display_string[16];
   char status_char[32];
   struct tm local_time;

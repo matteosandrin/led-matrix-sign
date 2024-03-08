@@ -37,6 +37,7 @@ const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
 Button2 button;
 Spotify spotify;
+MBTA mbta;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -348,7 +349,7 @@ void system_task(void *params) {
         RenderMessage message;
         message.sign_mode = SIGN_MODE_MBTA;
         message.mbta_content.status = PREDICTION_STATUS_OK;
-        get_placeholder_predictions(
+        mbta.get_placeholder_predictions(
             (Prediction *)&message.mbta_content.predictions);
         xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
       } else if (current_sign_mode == SIGN_MODE_CLOCK) {
@@ -452,7 +453,7 @@ void mbta_provider_task(void *params) {
         // Two predictions, one for southbound trains and one for northbound
         // trains
         Prediction predictions[2];
-        PredictionStatus status = get_mbta_predictions_one_direction(
+        PredictionStatus status = mbta.get_predictions_one_direction(
             predictions, DIRECTION_SOUTHBOUND);
         message.mbta_content.status = status;
         if (status == PREDICTION_STATUS_OK) {

@@ -1,4 +1,5 @@
 #include <ArduinoJson.h>
+#include <WiFiClientSecure.h>
 
 #ifndef MBTA_API_H
 #define MBTA_API_H
@@ -17,33 +18,39 @@ enum PredictionStatus {
   PREDICTION_STATUS_SKIP
 };
 
-PredictionStatus get_mbta_predictions(Prediction *dst, int num_predictions,
-                                      int directions[], int nth_positions[]);
+class MBTA {
+  DynamicJsonDocument *prediction_data;
+  WiFiClientSecure *mbta_wifi_client;
+  PredictionStatus get_predictions(Prediction *dst, int num_predictions,
+                                   int directions[], int nth_positions[]);
+  int fetch_predictions(JsonDocument *prediction_data);
 
-PredictionStatus get_mbta_predictions_both_directions(Prediction dst[2]);
+  JsonObject find_nth_prediction_for_direction(
+      JsonDocument *prediction_data_ptr, int direction, int n);
 
-PredictionStatus get_mbta_predictions_one_direction(Prediction dst[2],
-                                                    int direction);
+  JsonObject find_trip_for_prediction(JsonDocument *prediction_data_ptr,
+                                      JsonObject prediction);
 
-void get_placeholder_predictions(Prediction dst[2]);
+  void format_prediction(JsonObject prediction, JsonObject trip,
+                         Prediction *dst);
 
-int fetch_predictions(JsonDocument *prediction_data);
+  int diff_with_local_time(String timestring);
 
-JsonObject find_nth_prediction_for_direction(JsonDocument *prediction_data_ptr,
-                                             int direction, int n);
+  int datetime_diff(struct tm time1, struct tm time2);
 
-JsonObject find_trip_for_prediction(JsonDocument *prediction_data_ptr,
-                                    JsonObject prediction);
+  int datetime_to_epoch(struct tm dt);
 
-void format_prediction(JsonObject prediction, JsonObject trip, Prediction *dst);
+  void determine_display_string(int arr_diff, int dep_diff, String status,
+                                char *dst);
 
-int diff_with_local_time(String timestring);
+ public:
+  MBTA();
+  PredictionStatus get_predictions_both_directions(Prediction dst[2]);
 
-int datetime_diff(struct tm time1, struct tm time2);
+  PredictionStatus get_predictions_one_direction(Prediction dst[2],
+                                                 int direction);
 
-int datetime_to_epoch(struct tm dt);
-
-void determine_display_string(int arr_diff, int dep_diff, String status,
-                              char *dst);
+  void get_placeholder_predictions(Prediction dst[2]);
+};
 
 #endif /* MBTA_API_H */
