@@ -107,6 +107,14 @@ void setup_display() {
   dma_display->clearScreen();
 }
 
+void display_log(char *message) {
+  dma_display->clearScreen();
+  dma_display->setCursor(0,0);
+  dma_display->setTextWrap(true);
+  dma_display->print(message);
+  dma_display->setTextWrap(false);
+}
+
 void setup_webserver() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", R"(
@@ -149,24 +157,32 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) continue;
   setup_wifi();
-  setup_time();
-  spotify.setup();
   setup_display();
 
+  display_log("Sync with NTP server");
+  setup_time();
+
+  display_log("Refresh Spotify token");
+  spotify.setup();
+
   // Webserver setup
+  display_log("Setup webserver");
   setup_webserver();
 
   // Button setup
+  display_log("Setup button");
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
 
   // Queue setup
+  display_log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
   sign_mode_queue = xQueueCreate(1, sizeof(SignMode));
   render_request_queue = xQueueCreate(32, sizeof(RenderRequest));
   render_response_queue = xQueueCreate(32, sizeof(RenderMessage));
 
   // Timer setup
+  display_log("Setup RTOS timers");
   mbta_provider_timer_handle =
       xTimerCreate("mbta_provider_timer",
                    5000 / portTICK_PERIOD_MS,  // timer interval in millisec
@@ -206,6 +222,7 @@ void setup() {
   //
   // The render_task has its own reserved core, because I always want the
   // the display to be ready to draw when it receives a new message.
+  display_log("Setup RTOS tasks");
   xTaskCreatePinnedToCore(system_task, "system_task",
                           2048,  // stack size
                           NULL,  // task parameters
@@ -236,6 +253,8 @@ void setup() {
                           NULL,  // task parameters
                           1,     // task priority
                           &music_provider_task_handle, ESP32_CORE_0);
+
+  display_log("Setup DONE!");
 }
 
 void loop() {}
