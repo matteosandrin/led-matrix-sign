@@ -1,4 +1,5 @@
 #include <ArduinoJson.h>
+#include <WiFiClientSecure.h>
 
 #ifndef SPOTIFY_H
 #define SPOTIFY_H
@@ -16,9 +17,20 @@ struct CurrentlyPlaying {
   int32_t progress_ms;
 };
 
-void setup_spotify();
-SpotifyResponse refresh_token(char *dst);
-SpotifyResponse get_currently_playing(CurrentlyPlaying *dst);
-SpotifyResponse fetch_currently_playing(JsonDocument *dst);
+class Spotify {
+  char access_token[256];
+  WiFiClientSecure *spotify_wifi_client;
+  DynamicJsonDocument *refresh_token_response;
+  DynamicJsonDocument *currently_playing_response;
+  SpotifyResponse fetch_currently_playing(JsonDocument *dst);
+  void get_refresh_bearer_token(char *dst);
+  void get_api_bearer_token(char *dst);
+
+ public:
+  Spotify();
+  void setup();
+  SpotifyResponse refresh_token(char *dst);
+  SpotifyResponse get_currently_playing(CurrentlyPlaying *dst);
+};
 
 #endif /* SPOTIFY_H */

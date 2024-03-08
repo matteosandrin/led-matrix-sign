@@ -15,12 +15,13 @@
   "grant_type=refresh_token&"         \
   "refresh_token=" SPOTIFY_REFRESH_TOKEN
 
-char access_token[256];
-WiFiClientSecure *spotify_wifi_client = new WiFiClientSecure;
-DynamicJsonDocument *refresh_token_response = new DynamicJsonDocument(2048);
-DynamicJsonDocument *currently_playing_response = new DynamicJsonDocument(2048);
+Spotify::Spotify() {
+  spotify_wifi_client = new WiFiClientSecure;
+  refresh_token_response = new DynamicJsonDocument(2048);
+  currently_playing_response = new DynamicJsonDocument(2048);
+}
 
-void setup_spotify() {
+void Spotify::setup() {
   //   Preferences preferences;
   //   preferences.begin("spotify");
   int status = refresh_token(access_token);
@@ -29,7 +30,7 @@ void setup_spotify() {
   }
 }
 
-SpotifyResponse get_currently_playing(CurrentlyPlaying *dst) {
+SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   SpotifyResponse status = fetch_currently_playing(currently_playing_response);
   if (status != SPOTIFY_RESPONSE_OK) {
     return status;
@@ -45,18 +46,18 @@ SpotifyResponse get_currently_playing(CurrentlyPlaying *dst) {
   return SPOTIFY_RESPONSE_OK;
 }
 
-void get_refresh_bearer_token(char *dst) {
+void Spotify::get_refresh_bearer_token(char *dst) {
   char bearer[128];
   sprintf(bearer, "%s:%s", SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET);
   String bearer_header = "Basic " + base64::encode(bearer);
   bearer_header.toCharArray(dst, 256);
 }
 
-void get_api_bearer_token(char *dst) {
+void Spotify::get_api_bearer_token(char *dst) {
   sprintf(dst, "Bearer %s", access_token);
 }
 
-SpotifyResponse refresh_token(char *dst) {
+SpotifyResponse Spotify::refresh_token(char *dst) {
   if (spotify_wifi_client) {
     spotify_wifi_client->setInsecure();
     HTTPClient https;
@@ -87,7 +88,7 @@ SpotifyResponse refresh_token(char *dst) {
   return SPOTIFY_RESPONSE_ERROR;
 }
 
-SpotifyResponse fetch_currently_playing(JsonDocument *dst) {
+SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
   if (spotify_wifi_client) {
     spotify_wifi_client->setInsecure();
     HTTPClient https;

@@ -36,6 +36,7 @@ const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
 Button2 button;
+Spotify spotify;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -148,7 +149,7 @@ void setup() {
   while (!Serial) continue;
   setup_wifi();
   setup_time();
-  setup_spotify();
+  spotify.setup();
   setup_display();
 
   // Webserver setup
@@ -522,7 +523,8 @@ void music_provider_task(void *params) {
         RenderMessage message;
         message.sign_mode = SIGN_MODE_MUSIC;
         CurrentlyPlaying currently_playing;
-        SpotifyResponse status = get_currently_playing(&currently_playing);
+        SpotifyResponse status =
+            spotify.get_currently_playing(&currently_playing);
         if (status == SPOTIFY_RESPONSE_OK) {
           sprintf(message.text_content.text, "%s\n%s", currently_playing.title,
                   currently_playing.artist);
