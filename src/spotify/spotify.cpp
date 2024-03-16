@@ -40,7 +40,7 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   artist.toCharArray(dst->artist, 64);
   name.toCharArray(dst->title, 64);
   dst->duration_ms = currently_playing["duration_ms"];
-  dst->progress_ms = currently_playing["progress_ms"];
+  dst->progress_ms = (*this->currently_playing_response)["progress_ms"];
   return SPOTIFY_RESPONSE_OK;
 }
 

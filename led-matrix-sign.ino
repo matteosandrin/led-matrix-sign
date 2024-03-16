@@ -324,6 +324,15 @@ void render_music_content(MusicRenderContent content) {
     CurrentlyPlaying playing = content.data;
     canvas.println(playing.title);
     canvas.println(playing.artist);
+    // draw progress bar
+    int progress_bar_width = SCREEN_WIDTH;
+    double progress = (double)playing.progress_ms / (double)playing.duration_ms;
+    int current_bar_width = progress_bar_width * progress;
+    canvas.drawRect(0, SCREEN_HEIGHT - 2, progress_bar_width, 2, WHITE);
+    if (current_bar_width > 0) {
+      canvas.drawRect(0, SCREEN_HEIGHT - 2, current_bar_width, 2,
+                      SPOTIFY_GREEN);
+    }
   } else if (content.status == SPOTIFY_RESPONSE_EMPTY) {
     canvas.print("Nothing is playing");
   } else {
