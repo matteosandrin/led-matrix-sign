@@ -14,13 +14,16 @@ struct Prediction {
 
 enum PredictionStatus {
   PREDICTION_STATUS_OK,
+  PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1,
+  PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2,
   PREDICTION_STATUS_ERROR,
-  PREDICTION_STATUS_SKIP
+  PREDICTION_STATUS_SKIP,
 };
 
 class MBTA {
   DynamicJsonDocument *prediction_data;
   WiFiClientSecure *wifi_client;
+  Prediction latest_predictions[2];
   PredictionStatus get_predictions(Prediction *dst, int num_predictions,
                                    int directions[], int nth_positions[]);
   int fetch_predictions(JsonDocument *prediction_data);
@@ -42,6 +45,10 @@ class MBTA {
 
   void determine_display_string(int arr_diff, int dep_diff, String status,
                                 char *dst);
+
+  void update_latest_predictions(Prediction latest[], int directions[]);
+
+  bool show_arriving_banner(Prediction *prediction, int direction);
 
  public:
   MBTA();

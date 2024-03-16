@@ -268,6 +268,12 @@ int justify_right(char *str, int char_width, int min_x) {
   return max(cursor_x, min_x);
 }
 
+int justify_center(char *str, int char_width) {
+  int num_characters = strlen(str);
+  int cursor_x = (SCREEN_WIDTH - (num_characters * char_width)) / 2;
+  return cursor_x;
+}
+
 void render_text_content(TextRenderContent content, uint16_t color) {
   Serial.println("Rendering text content");
   canvas.fillScreen(BLACK);
@@ -304,6 +310,28 @@ void render_mbta_content(MBTARenderContent content) {
     canvas.print(predictions[1].label);
     canvas.setCursor(cursor_x_2, 31);
     canvas.print(predictions[1].value);
+  } else if (content.status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
+             content.status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2) {
+    Prediction *predictions = content.predictions;
+    canvas.setFont(&MBTASans);
+
+    Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
+    Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
+
+    int slot =
+        (int)content.status - (int)PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1;
+    char arr_banner_message_line1[32];
+    Serial.println(predictions[slot].label);
+    snprintf(arr_banner_message_line1, 32, "%s train", predictions[slot].label);
+    Serial.println(arr_banner_message_line1);
+    char arr_banner_message_line2[] = "is now arriving.";
+
+    int cursor_x_1 = justify_center(arr_banner_message_line1, 10);
+    canvas.setCursor(cursor_x_1, 15);
+    canvas.print(arr_banner_message_line1);
+    int cursor_x_2 = justify_center(arr_banner_message_line2, 10);
+    canvas.setCursor(cursor_x_2, 31);
+    canvas.print(arr_banner_message_line2);
   } else {
     canvas.setFont(NULL);
     canvas.setCursor(0, 0);
@@ -503,7 +531,9 @@ void mbta_provider_task(void *params) {
         PredictionStatus status = mbta.get_predictions_one_direction(
             predictions, DIRECTION_SOUTHBOUND);
         message.mbta_content.status = status;
-        if (status == PREDICTION_STATUS_OK) {
+        if (status == PREDICTION_STATUS_OK ||
+            status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
+            status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2) {
           message.mbta_content.predictions[0] = predictions[0];
           message.mbta_content.predictions[1] = predictions[1];
         }

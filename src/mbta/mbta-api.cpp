@@ -19,6 +19,7 @@
 MBTA::MBTA() {
   this->prediction_data = new DynamicJsonDocument(8192);
   this->wifi_client = new WiFiClientSecure;
+  this->get_placeholder_predictions(this->latest_predictions);
 }
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
@@ -40,8 +41,15 @@ PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
     }
     this->format_prediction(prediction, trip, &dst[i]);
   }
+  PredictionStatus prediction_status = PREDICTION_STATUS_OK;
+  if (this->show_arriving_banner(&dst[0], directions[0])) {
+    prediction_status = PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1;
+  } else if (this->show_arriving_banner(&dst[1], directions[1])) {
+    prediction_status = PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2;
+  }
+  this->update_latest_predictions(dst, directions);
   this->prediction_data->clear();
-  return PREDICTION_STATUS_OK;
+  return prediction_status;
 }
 
 PredictionStatus MBTA::get_predictions_both_directions(Prediction dst[2]) {
@@ -220,4 +228,18 @@ void MBTA::format_prediction(JsonObject prediction, JsonObject trip,
   }
   Serial.printf("display string: %s\n", display_string);
   strcpy(dst->value, display_string);
+}
+
+void MBTA::update_latest_predictions(Prediction latest[2], int directions[2]) {
+  if (directions[0] == directions[1]) {
+    this->latest_predictions[directions[0]] = latest[0];
+  } else {
+    this->latest_predictions[directions[0]] = latest[0];
+    this->latest_predictions[directions[1]] = latest[1];
+  }
+}
+
+bool MBTA::show_arriving_banner(Prediction *prediction, int direction) {
+  return strcmp(prediction->value, "ARR") == 0 &&
+         strcmp(this->latest_predictions[direction].value, "ARR") != 0;
 }
