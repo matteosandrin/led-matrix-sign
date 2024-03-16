@@ -1,5 +1,5 @@
-#ifndef LED_MATRIX_PINS_H
-#define LED_MATRIX_PINS_H
+#ifndef DISPLAY_PINS_H
+#define DISPLAY_PINS_H
 
 #define R1_PIN  25
 #define G1_PIN  26
@@ -18,4 +18,4 @@
 #define OE_PIN  15
 #define CLK_PIN 16
 
-#endif /* LED_MATRIX_PINS_H */
+#endif /* DISPLAY_PINS_H */

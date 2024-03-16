@@ -2,7 +2,6 @@
 #include <AsyncTCP.h>
 #include <Button2.h>
 #include <ESP.h>
-#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
@@ -12,21 +11,10 @@
 #include <sntp.h>
 #include <time.h>
 
-#include "led-matrix-pins.h"
 #include "led-matrix-sign.h"
-#include "src/mbta/MBTASans.h"
+#include "src/display/display.h"
 #include "src/mbta/mbta-api.h"
 #include "src/spotify/spotify.h"
-
-MatrixPanel_I2S_DMA *dma_display = nullptr;
-uint16_t AMBER = dma_display->color565(255, 191, 0);
-uint16_t WHITE = dma_display->color565(255, 255, 255);
-uint16_t BLACK = dma_display->color565(0, 0, 0);
-uint16_t SPOTIFY_GREEN = dma_display->color565(29, 185, 84);
-// Using a GFXcanvas reduces the flicker when redrawing the screen, but uses a
-// lot of memory. (160 * 32 * 2 = 10240 bytes)
-// https://learn.adafruit.com/adafruit-gfx-graphics-library/minimizing-redraw-flicker
-GFXcanvas16 canvas(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 AsyncWebServer server(80);
 const char *ssid = "OliveBranch2.4GHz";
@@ -35,6 +23,7 @@ const char *ntpServer1 = "pool.ntp.org";
 const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
+Display display;
 Button2 button;
 Spotify spotify;
 MBTA mbta;
@@ -88,33 +77,6 @@ void setup_time() {
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S%z");
 }
 
-void setup_display() {
-  HUB75_I2S_CFG::i2s_pins _pins = {R1_PIN, G1_PIN,  B1_PIN, R2_PIN, G2_PIN,
-                                   B2_PIN, A_PIN,   B_PIN,  C_PIN,  D_PIN,
-                                   E_PIN,  LAT_PIN, OE_PIN, CLK_PIN};
-  HUB75_I2S_CFG mxconfig(PANEL_RES_X,  // module width
-                         PANEL_RES_Y,  // module height
-                         PANEL_CHAIN,  // Chain length
-                         _pins         // pin mapping
-  );
-
-  // This is essential to avoid artifacts on the display
-  mxconfig.clkphase = false;
-
-  dma_display = new MatrixPanel_I2S_DMA(mxconfig);
-  dma_display->begin();
-  dma_display->setBrightness8(90);  // 0-255
-  dma_display->clearScreen();
-}
-
-void display_log(char *message) {
-  dma_display->clearScreen();
-  dma_display->setCursor(0, 0);
-  dma_display->setTextWrap(true);
-  dma_display->print(message);
-  dma_display->setTextWrap(false);
-}
-
 void setup_webserver() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", R"(
@@ -157,32 +119,32 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) continue;
   setup_wifi();
-  setup_display();
+  display.setup();
 
-  display_log("Sync with NTP server");
+  display.log("Sync with NTP server");
   setup_time();
 
-  display_log("Refresh Spotify token");
+  display.log("Refresh Spotify token");
   spotify.setup();
 
   // Webserver setup
-  display_log("Setup webserver");
+  display.log("Setup webserver");
   setup_webserver();
 
   // Button setup
-  display_log("Setup button");
+  display.log("Setup button");
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
 
   // Queue setup
-  display_log("Setup RTOS queues");
+  display.log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
   sign_mode_queue = xQueueCreate(1, sizeof(SignMode));
   render_request_queue = xQueueCreate(32, sizeof(RenderRequest));
   render_response_queue = xQueueCreate(32, sizeof(RenderMessage));
 
   // Timer setup
-  display_log("Setup RTOS timers");
+  display.log("Setup RTOS timers");
   mbta_provider_timer_handle =
       xTimerCreate("mbta_provider_timer",
                    5000 / portTICK_PERIOD_MS,  // timer interval in millisec
@@ -222,7 +184,7 @@ void setup() {
   //
   // The render_task has its own reserved core, because I always want the
   // the display to be ready to draw when it receives a new message.
-  display_log("Setup RTOS tasks");
+  display.log("Setup RTOS tasks");
   xTaskCreatePinnedToCore(system_task, "system_task",
                           2048,  // stack size
                           NULL,  // task parameters
@@ -254,121 +216,10 @@ void setup() {
                           1,     // task priority
                           &music_provider_task_handle, ESP32_CORE_0);
 
-  display_log("Setup DONE!");
+  display.log("Setup DONE!");
 }
 
 void loop() {}
-
-// Calculate the cursor position that aligns the given string to the right edge
-// of the screen. If the cursor position is left of min_x, then min_x is
-// returned instead.
-int justify_right(char *str, int char_width, int min_x) {
-  int num_characters = strlen(str);
-  int cursor_x = SCREEN_WIDTH - (num_characters * char_width);
-  return max(cursor_x, min_x);
-}
-
-int justify_center(char *str, int char_width) {
-  int num_characters = strlen(str);
-  int cursor_x = (SCREEN_WIDTH - (num_characters * char_width)) / 2;
-  return cursor_x;
-}
-
-void render_text_content(TextRenderContent content, uint16_t color) {
-  Serial.println("Rendering text content");
-  canvas.fillScreen(BLACK);
-  canvas.setFont(NULL);
-  canvas.setTextColor(color);
-  canvas.setCursor(0, 0);
-  canvas.print(content.text);
-  dma_display->drawRGBBitmap(0, 0, canvas.getBuffer(), canvas.width(),
-                             canvas.height());
-}
-
-void render_mbta_content(MBTARenderContent content) {
-  Serial.println("Rendering mbta content");
-  canvas.fillScreen(BLACK);
-  canvas.setTextSize(1);
-  canvas.setTextWrap(false);
-  canvas.setTextColor(AMBER);
-
-  if (content.status == PREDICTION_STATUS_OK) {
-    Prediction *predictions = content.predictions;
-    canvas.setFont(&MBTASans);
-
-    Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
-    Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
-
-    int cursor_x_1 = justify_right(predictions[0].value, 10, PANEL_RES_X * 3);
-    canvas.setCursor(0, 15);
-    canvas.print(predictions[0].label);
-    canvas.setCursor(cursor_x_1, 15);
-    canvas.print(predictions[0].value);
-
-    int cursor_x_2 = justify_right(predictions[1].value, 10, PANEL_RES_X * 3);
-    canvas.setCursor(0, 31);
-    canvas.print(predictions[1].label);
-    canvas.setCursor(cursor_x_2, 31);
-    canvas.print(predictions[1].value);
-  } else if (content.status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
-             content.status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2) {
-    Prediction *predictions = content.predictions;
-    canvas.setFont(&MBTASans);
-
-    Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
-    Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
-
-    int slot =
-        (int)content.status - (int)PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1;
-    char arr_banner_message_line1[32];
-    Serial.println(predictions[slot].label);
-    snprintf(arr_banner_message_line1, 32, "%s train", predictions[slot].label);
-    Serial.println(arr_banner_message_line1);
-    char arr_banner_message_line2[] = "is now arriving.";
-
-    int cursor_x_1 = justify_center(arr_banner_message_line1, 10);
-    canvas.setCursor(cursor_x_1, 15);
-    canvas.print(arr_banner_message_line1);
-    int cursor_x_2 = justify_center(arr_banner_message_line2, 10);
-    canvas.setCursor(cursor_x_2, 31);
-    canvas.print(arr_banner_message_line2);
-  } else {
-    canvas.setFont(NULL);
-    canvas.setCursor(0, 0);
-    canvas.print("Failed to fetch MBTA data");
-    Serial.println("Failed to fetch MBTA data");
-  }
-  dma_display->drawRGBBitmap(0, 0, canvas.getBuffer(), canvas.width(),
-                             canvas.height());
-}
-
-void render_music_content(MusicRenderContent content) {
-  Serial.println("Rendering music content");
-  canvas.fillScreen(BLACK);
-  canvas.setFont(NULL);
-  canvas.setTextColor(SPOTIFY_GREEN);
-  canvas.setCursor(0, 0);
-  if (content.status == SPOTIFY_RESPONSE_OK) {
-    CurrentlyPlaying playing = content.data;
-    canvas.println(playing.title);
-    canvas.println(playing.artist);
-    // draw progress bar
-    int progress_bar_width = SCREEN_WIDTH;
-    double progress = (double)playing.progress_ms / (double)playing.duration_ms;
-    int current_bar_width = progress_bar_width * progress;
-    canvas.drawRect(0, SCREEN_HEIGHT - 2, progress_bar_width, 2, WHITE);
-    if (current_bar_width > 0) {
-      canvas.drawRect(0, SCREEN_HEIGHT - 2, current_bar_width, 2,
-                      SPOTIFY_GREEN);
-    }
-  } else if (content.status == SPOTIFY_RESPONSE_EMPTY) {
-    canvas.print("Nothing is playing");
-  } else {
-    canvas.print("Error querying the spotify API");
-  }
-  dma_display->drawRGBBitmap(0, 0, canvas.getBuffer(), canvas.width(),
-                             canvas.height());
-}
 
 void system_task(void *params) {
   SignMode current_sign_mode = SIGN_MODE_MBTA;
@@ -459,13 +310,13 @@ void render_task(void *params) {
     if (xQueueReceive(render_response_queue, &message, TEN_MILLIS)) {
       if (message.sign_mode == current_sign_mode) {
         if (message.sign_mode == SIGN_MODE_TEST) {
-          render_text_content(message.text_content, WHITE);
+          display.render_text_content(message.text_content, display.WHITE);
         } else if (message.sign_mode == SIGN_MODE_MBTA) {
-          render_mbta_content(message.mbta_content);
+          display.render_mbta_content(message.mbta_content);
         } else if (message.sign_mode == SIGN_MODE_CLOCK) {
-          render_text_content(message.text_content, WHITE);
+          display.render_text_content(message.text_content, display.WHITE);
         } else if (message.sign_mode == SIGN_MODE_MUSIC) {
-          render_music_content(message.music_content);
+          display.render_music_content(message.music_content);
         }
       } else {
         Serial.println(
