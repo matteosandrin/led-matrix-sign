@@ -49,4 +49,6 @@ void check_wifi_and_reconnect_timer(TimerHandle_t timer);
 void web_server_index();
 void web_server_mode();
 
+SignMode shift_sign_mode(SignMode current_sign_mode);
+
 #endif /* LED_MATRIX_SIGN_H */
