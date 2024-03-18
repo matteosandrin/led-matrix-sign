@@ -441,8 +441,8 @@ void mbta_provider_task(void *params) {
         // Two predictions, one for southbound trains and one for northbound
         // trains
         Prediction predictions[2];
-        PredictionStatus status = mbta.get_predictions_one_direction(
-            predictions, DIRECTION_SOUTHBOUND);
+        PredictionStatus status =
+            mbta.get_predictions_both_directions(predictions);
         message.mbta_content.status = status;
         if (status == PREDICTION_STATUS_OK ||
             status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
