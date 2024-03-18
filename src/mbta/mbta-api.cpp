@@ -9,12 +9,13 @@
 
 #define MBTA_REQUEST                                                    \
   "https://api-v3.mbta.com/predictions?"                                \
-  "api_key=" MBTA_API_KEY                                               \
-  "&"                                                                   \
-  "filter[stop]=place-harsq&"                                           \
+  "api_key=%s&"                                                         \
+  "filter[stop]=%s&"                                                    \
   "filter[route]=Red&"                                                  \
   "fields[prediction]=arrival_time,departure_time,status,direction_id&" \
   "include=trip"
+
+#define DEFAULT_TRAIN_STATION TRAIN_STATION_KENDALL
 
 MBTA::MBTA() {
   this->prediction_data = new DynamicJsonDocument(8192);
@@ -72,11 +73,18 @@ void MBTA::get_placeholder_predictions(Prediction dst[2]) {
   strcpy(dst[1].value, "");
 }
 
+void MBTA::set_station(TrainStation station) {
+  this->current_station = station;
+}
+
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
   if (this->wifi_client) {
     this->wifi_client->setInsecure();
     HTTPClient https;
-    if (https.begin(*this->wifi_client, MBTA_REQUEST)) {
+    char request_url[256];
+    snprintf(request_url, 256, MBTA_REQUEST, MBTA_API_KEY,
+             this->train_station_codes[this->current_station]);
+    if (https.begin(*this->wifi_client, request_url)) {
       int httpCode = https.GET();
       Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
       if (httpCode > 0) {
@@ -242,4 +250,30 @@ void MBTA::update_latest_predictions(Prediction latest[2], int directions[2]) {
 bool MBTA::show_arriving_banner(Prediction *prediction, int direction) {
   return strcmp(prediction->value, "ARR") == 0 &&
          strcmp(this->latest_predictions[direction].value, "ARR") != 0;
+}
+
+char *train_station_to_str(TrainStation station) {
+  switch (station) {
+    case TRAIN_STATION_ALEWIFE:
+      return "Alewife";
+    case TRAIN_STATION_DAVIS:
+      return "Davis";
+    case TRAIN_STATION_PORTER:
+      return "Porter";
+    case TRAIN_STATION_HARVARD:
+      return "Harvard";
+    case TRAIN_STATION_CENTRAL:
+      return "Central";
+    case TRAIN_STATION_KENDALL:
+      return "Kendall/MIT";
+    case TRAIN_STATION_CHARLES_MGH:
+      return "Charles/MGH";
+    case TRAIN_STATION_PARK_STREET:
+      return "Park Street";
+    case TRAIN_STATION_DOWNTOWN_CROSSING:
+      return "Downtown Crossing";
+    case TRAIN_STATION_SOUTH_STATION:
+      return "South Station";
+  }
+  return "TRAIN_STATION_UNKNOWN";
 }

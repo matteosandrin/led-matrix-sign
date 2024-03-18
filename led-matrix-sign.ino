@@ -24,8 +24,8 @@ const char *ntpServer2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
 SignMode disabled_sign_modes[] = {
-  SIGN_MODE_TEST,
-  SIGN_MODE_CLOCK, 
+    SIGN_MODE_TEST,
+    SIGN_MODE_CLOCK,
 };
 
 Display display;
@@ -84,21 +84,36 @@ void setup_time() {
 
 void setup_webserver() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", R"(
-        <!DOCTYPE html/>
-        <head>
-          <title>LED Matrix Display</title>
-        </head>
-        <body>
-          <h1>LED Matrix Display</h1>
-          <ul>
-            <li><a href="/mode?id=0">SIGN_MODE_TEST</a></li>
-            <li><a href="/mode?id=1">SIGN_MODE_MBTA</a></li>
-            <li><a href="/mode?id=2">SIGN_MODE_CLOCK</a></li>
-            <li><a href="/mode?id=3">SIGN_MODE_MUSIC</a></li>
-          </ul>
-        </body>
-      )");
+    char response[] = R"(
+      <!DOCTYPE html/>
+      <head>
+        <title>LED Matrix Display</title>
+      </head>
+      <body>
+        <h1>LED Matrix Display</h1>
+        <h2>Set sign mode</h2>
+        <ul>
+          <li><a href="/mode?id=0">SIGN_MODE_TEST</a></li>
+          <li><a href="/mode?id=1">SIGN_MODE_MBTA</a></li>
+          <li><a href="/mode?id=2">SIGN_MODE_CLOCK</a></li>
+          <li><a href="/mode?id=3">SIGN_MODE_MUSIC</a></li>
+        </ul>
+        <h2>Set MBTA station</h2>
+        <ul>
+          <li><a href="/set?key=station&value=0">Alewife</a></li>
+          <li><a href="/set?key=station&value=1">Davis</a></li>
+          <li><a href="/set?key=station&value=2">Porter</a></li>
+          <li><a href="/set?key=station&value=3">Harvard</a></li>
+          <li><a href="/set?key=station&value=4">Central</a></li>
+          <li><a href="/set?key=station&value=5">Kendall/MIT</a></li>
+          <li><a href="/set?key=station&value=6">Charles/MGH</a></li>
+          <li><a href="/set?key=station&value=7">Park Street</a></li>
+          <li><a href="/set?key=station&value=8">Downtown Crossing</a></li>
+          <li><a href="/set?key=station&value=9">South Station</a></li>
+        </ul>
+      </body>
+    )";
+    request->send(200, "text/html", response);
   });
   server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (request->hasParam("id")) {
@@ -114,6 +129,30 @@ void setup_webserver() {
         }
       }
       request->send(500, "text/plain", "invalid sign mode: " + sign_mode_str);
+    }
+    request->send(500, "text/plain", "missing query parameter 'id'");
+  });
+  server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("key") && request->hasParam("value")) {
+      String key = request->getParam("key")->value();
+      String value = request->getParam("value")->value();
+
+      if (key == "station") {
+        int station = value.toInt();
+        if (0 <= station < TRAIN_STATION_MAX) {
+          UIMessage message;
+          message.type = UI_MESSAGE_TYPE_MBTA_CHANGE_STATION;
+          message.next_station = (TrainStation)station;
+          if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
+            request->redirect("/");
+            return;
+          }
+        } else {
+          request->send(500, "text/plain", "invalid station id: " + value);
+        }
+      } else {
+        request->send(500, "text/plain", "unknown key '" + key + "'");
+      }
     }
     request->send(500, "text/plain", "missing query parameter 'id'");
   });
@@ -237,64 +276,82 @@ void system_task(void *params) {
   while (1) {
     UIMessage ui_message;
     if (xQueueReceive(ui_queue, &ui_message, TEN_MILLIS)) {
-      // New message from the button queue. This means the button has been
-      // pressed
+      // New message from the ui queue
       Serial.println("message received on the ui_queue");
-      if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT) {
-        current_sign_mode = shift_sign_mode(current_sign_mode);
-      } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
-        current_sign_mode = ui_message.next_sign_mode;
-      }
-      Serial.printf("system task setting sign mode: %d\n", current_sign_mode);
-      // empty all rendering queues
-      xQueueReset(render_request_queue);
-      xQueueReset(render_response_queue);
-      // Stop all provider timers
-      if (xTimerIsTimerActive(mbta_provider_timer_handle)) {
-        if (xTimerStop(mbta_provider_timer_handle, TEN_MILLIS)) {
-          Serial.println("stopping mbta provider timer");
+      // ui message says to change sign mode
+      if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT ||
+          ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
+        if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT) {
+          current_sign_mode = shift_sign_mode(current_sign_mode);
+        } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
+          current_sign_mode = ui_message.next_sign_mode;
         }
-      }
-      if (xTimerIsTimerActive(clock_provider_timer_handle)) {
-        if (xTimerStop(clock_provider_timer_handle, TEN_MILLIS)) {
-          Serial.println("stopping clock provider timer");
+        Serial.printf("system task setting sign mode: %d\n", current_sign_mode);
+        // empty all rendering queues
+        xQueueReset(render_request_queue);
+        xQueueReset(render_response_queue);
+        // Stop all provider timers
+        if (xTimerIsTimerActive(mbta_provider_timer_handle)) {
+          if (xTimerStop(mbta_provider_timer_handle, TEN_MILLIS)) {
+            Serial.println("stopping mbta provider timer");
+          }
         }
-      }
-      if (xTimerIsTimerActive(music_provider_timer_handle)) {
-        if (xTimerStop(music_provider_timer_handle, TEN_MILLIS)) {
-          Serial.println("stopping music provider timer");
+        if (xTimerIsTimerActive(clock_provider_timer_handle)) {
+          if (xTimerStop(clock_provider_timer_handle, TEN_MILLIS)) {
+            Serial.println("stopping clock provider timer");
+          }
         }
-      }
-      // Notify all other tasks that the sign mode has changed
-      xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
-      // Request new render messages from the appropriate provider
-      RenderRequest request{current_sign_mode};
-      if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
-        Serial.println("sending render_request to render_request_queue");
-      }
-      if (current_sign_mode == SIGN_MODE_MBTA) {
-        if (xTimerReset(mbta_provider_timer_handle, TEN_MILLIS)) {
-          Serial.println("starting mbta provider timer");
+        if (xTimerIsTimerActive(music_provider_timer_handle)) {
+          if (xTimerStop(music_provider_timer_handle, TEN_MILLIS)) {
+            Serial.println("stopping music provider timer");
+          }
         }
-        // Send placeholder predictions while we wait for the real ones
-        RenderMessage message;
-        message.sign_mode = SIGN_MODE_MBTA;
-        message.mbta_content.status = PREDICTION_STATUS_OK;
-        mbta.get_placeholder_predictions(
-            (Prediction *)&message.mbta_content.predictions);
-        xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
-      } else if (current_sign_mode == SIGN_MODE_CLOCK) {
-        if (xTimerReset(clock_provider_timer_handle, TEN_MILLIS)) {
-          Serial.println("starting clock provider timer");
+        // Notify all other tasks that the sign mode has changed
+        xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
+        // Request new render messages from the appropriate provider
+        RenderRequest request{current_sign_mode};
+        if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
+          Serial.println("sending render_request to render_request_queue");
         }
-      } else if (current_sign_mode == SIGN_MODE_MUSIC) {
-        // Send placeholder music info while we wait for the real info
-        RenderMessage message;
-        message.sign_mode = SIGN_MODE_MUSIC;
-        sprintf(message.text_content.text, "Nothing is playing");
-        xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
-        if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
-          Serial.println("starting music provider timer");
+        if (current_sign_mode == SIGN_MODE_MBTA) {
+          if (xTimerReset(mbta_provider_timer_handle, TEN_MILLIS)) {
+            Serial.println("starting mbta provider timer");
+          }
+          // Send placeholder predictions while we wait for the real ones
+          RenderMessage message;
+          message.sign_mode = SIGN_MODE_MBTA;
+          message.mbta_content.status = PREDICTION_STATUS_OK;
+          mbta.get_placeholder_predictions(
+              (Prediction *)&message.mbta_content.predictions);
+          xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+        } else if (current_sign_mode == SIGN_MODE_CLOCK) {
+          if (xTimerReset(clock_provider_timer_handle, TEN_MILLIS)) {
+            Serial.println("starting clock provider timer");
+          }
+        } else if (current_sign_mode == SIGN_MODE_MUSIC) {
+          // Send placeholder music info while we wait for the real info
+          RenderMessage message;
+          message.sign_mode = SIGN_MODE_MUSIC;
+          sprintf(message.text_content.text, "Nothing is playing");
+          xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+          if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
+            Serial.println("starting music provider timer");
+          }
+        }
+      } else if (ui_message.type == UI_MESSAGE_TYPE_MBTA_CHANGE_STATION) {
+        Serial.printf("updating mbta station to %s\n",
+                      train_station_to_str(ui_message.next_station));
+        mbta.set_station(ui_message.next_station);
+        if (current_sign_mode == SIGN_MODE_MBTA) {
+          RenderMessage message;
+          message.sign_mode = SIGN_MODE_MBTA;
+          message.mbta_content.status =
+              PREDICTION_STATUS_OK_SHOW_STATION_BANNER;
+          strcpy(message.mbta_content.predictions[0].label,
+                 train_station_to_str(ui_message.next_station));
+          if (xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS)) {
+            Serial.println("show updated mbta station on display");
+          }
         }
       }
     }
@@ -389,7 +446,8 @@ void mbta_provider_task(void *params) {
         message.mbta_content.status = status;
         if (status == PREDICTION_STATUS_OK ||
             status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
-            status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2) {
+            status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2 ||
+            status == PREDICTION_STATUS_OK_SHOW_STATION_BANNER) {
           message.mbta_content.predictions[0] = predictions[0];
           message.mbta_content.predictions[1] = predictions[1];
         }
@@ -512,4 +570,18 @@ SignMode shift_sign_mode(SignMode current_sign_mode) {
     }
   }
   return next_sign_mode;
+}
+
+char *sign_mode_to_str(SignMode sign_mode) {
+  switch (sign_mode) {
+    case SIGN_MODE_TEST:
+      return "SIGN_MODE_TEST";
+    case SIGN_MODE_MBTA:
+      return "SIGN_MODE_MBTA";
+    case SIGN_MODE_CLOCK:
+      return "SIGN_MODE_CLOCK";
+    case SIGN_MODE_MUSIC:
+      return "SIGN_MODE_MUSIC";
+  }
+  return "SIGN_MODE_UNKNOWN";
 }

@@ -27,12 +27,14 @@ TimerHandle_t button_loop_timer_handle;
 
 enum UIMessageType {
   UI_MESSAGE_TYPE_MODE_CHANGE,  // change to a specified sign mode
-  UI_MESSAGE_TYPE_MODE_SHIFT    // shift to the next available sign mode
+  UI_MESSAGE_TYPE_MODE_SHIFT,   // shift to the next available sign mode
+  UI_MESSAGE_TYPE_MBTA_CHANGE_STATION,
 };
 
 struct UIMessage {
   UIMessageType type;
   SignMode next_sign_mode;
+  TrainStation next_station;
 };
 
 void system_task(void *params);
@@ -46,9 +48,7 @@ void mbta_provider_timer(TimerHandle_t timer);
 void clock_provider_timer(TimerHandle_t timer);
 void check_wifi_and_reconnect_timer(TimerHandle_t timer);
 
-void web_server_index();
-void web_server_mode();
-
 SignMode shift_sign_mode(SignMode current_sign_mode);
+char *sign_mode_to_str(SignMode sign_mode);
 
 #endif /* LED_MATRIX_SIGN_H */
