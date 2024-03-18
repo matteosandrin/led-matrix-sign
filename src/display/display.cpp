@@ -112,9 +112,8 @@ void Display::render_mbta_content(MBTARenderContent content) {
     this->canvas.print(arr_banner_message_line2);
   } else if (content.status == PREDICTION_STATUS_OK_SHOW_STATION_BANNER) {
     Prediction *predictions = content.predictions;
-    this->canvas.setFont(&MBTASans);
-    this->canvas.setTextWrap(true);
-    this->canvas.setCursor(0, 15);
+    this->canvas.setFont(NULL);
+    this->canvas.setCursor(0, 0);
     this->canvas.print(predictions[0].label);
   } else {
     this->canvas.setFont(NULL);
