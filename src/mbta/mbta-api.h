@@ -52,7 +52,7 @@ class MBTA {
     { TRAIN_STATION_DOWNTOWN_CROSSING, "place-dwnxg"},
     { TRAIN_STATION_SOUTH_STATION, "place-sstat"},
   };
-  TrainStation current_station = TRAIN_STATION_HARVARD;
+  TrainStation current_station;
 
   PredictionStatus get_predictions(Prediction *dst, int num_predictions,
                                    int directions[], int nth_positions[]);

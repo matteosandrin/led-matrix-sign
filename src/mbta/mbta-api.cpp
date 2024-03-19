@@ -21,6 +21,7 @@ MBTA::MBTA() {
   this->prediction_data = new DynamicJsonDocument(8192);
   this->wifi_client = new WiFiClientSecure;
   this->get_placeholder_predictions(this->latest_predictions);
+  this->current_station = DEFAULT_TRAIN_STATION;
 }
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
