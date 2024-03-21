@@ -15,7 +15,7 @@
   "fields[prediction]=arrival_time,departure_time,status,direction_id&" \
   "include=trip"
 
-#define DEFAULT_TRAIN_STATION TRAIN_STATION_KENDALL
+#define DEFAULT_TRAIN_STATION TRAIN_STATION_HARVARD
 
 MBTA::MBTA() {
   this->prediction_data = new DynamicJsonDocument(8192);
