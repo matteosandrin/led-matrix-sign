@@ -360,6 +360,8 @@ void system_task(void *params) {
           if (xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS)) {
             Serial.println("show updated mbta station on display");
           }
+          // manually request a new MBTA frame
+          mbta_provider_timer(mbta_provider_timer_handle);
         }
       }
     }

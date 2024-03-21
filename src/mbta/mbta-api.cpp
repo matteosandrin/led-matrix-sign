@@ -76,6 +76,7 @@ void MBTA::get_placeholder_predictions(Prediction dst[2]) {
 
 void MBTA::set_station(TrainStation station) {
   this->current_station = station;
+  this->get_placeholder_predictions(this->latest_predictions);
 }
 
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
