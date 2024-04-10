@@ -295,8 +295,8 @@ void system_task(void *params) {
         } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
           current_sign_mode = ui_message.next_sign_mode;
         }
-        // save new sign mode, then restart
         write_sign_mode(current_sign_mode);
+        Serial.println("Rebooting ESP32");
         ESP.restart();
       } else if (ui_message.type == UI_MESSAGE_TYPE_MBTA_CHANGE_STATION) {
         Serial.printf("updating mbta station to %s\n",
