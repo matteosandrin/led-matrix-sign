@@ -10,6 +10,7 @@
 #include <freertos/timers.h>
 #include <sntp.h>
 #include <time.h>
+#include <Preferences.h>
 
 #include "led-matrix-sign.h"
 #include "src/display/display.h"
@@ -17,6 +18,7 @@
 #include "src/spotify/spotify.h"
 
 AsyncWebServer server(80);
+Preferences preferences;
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
 const char *ntpServer1 = "pool.ntp.org";
@@ -188,6 +190,9 @@ void setup() {
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
 
+  // Preferences setup
+  preferences.begin("default");
+
   // Queue setup
   display.log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
@@ -274,12 +279,8 @@ void setup() {
 void loop() {}
 
 void system_task(void *params) {
-  SignMode current_sign_mode = SIGN_MODE_MBTA;
-  UIMessage initial_message{
-      UI_MESSAGE_TYPE_MODE_CHANGE,  // type
-      SIGN_MODE_MBTA                // next_sign_mode
-  };
-  xQueueSend(ui_queue, &initial_message, portMAX_DELAY);
+  SignMode current_sign_mode = read_sign_mode();
+  start_sign(current_sign_mode);
 
   while (1) {
     UIMessage ui_message;
@@ -290,62 +291,13 @@ void system_task(void *params) {
       if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT ||
           ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
         if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT) {
-          current_sign_mode = shift_sign_mode(current_sign_mode);
+          current_sign_mode = shift_sign_mode(current_sign_mode)
         } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
           current_sign_mode = ui_message.next_sign_mode;
         }
-        Serial.printf("system task setting sign mode: %d\n", current_sign_mode);
-        // empty all rendering queues
-        xQueueReset(render_request_queue);
-        xQueueReset(render_response_queue);
-        // Stop all provider timers
-        if (xTimerIsTimerActive(mbta_provider_timer_handle)) {
-          if (xTimerStop(mbta_provider_timer_handle, TEN_MILLIS)) {
-            Serial.println("stopping mbta provider timer");
-          }
-        }
-        if (xTimerIsTimerActive(clock_provider_timer_handle)) {
-          if (xTimerStop(clock_provider_timer_handle, TEN_MILLIS)) {
-            Serial.println("stopping clock provider timer");
-          }
-        }
-        if (xTimerIsTimerActive(music_provider_timer_handle)) {
-          if (xTimerStop(music_provider_timer_handle, TEN_MILLIS)) {
-            Serial.println("stopping music provider timer");
-          }
-        }
-        // Notify all other tasks that the sign mode has changed
-        xQueueOverwrite(sign_mode_queue, (void *)&current_sign_mode);
-        // Request new render messages from the appropriate provider
-        RenderRequest request{current_sign_mode};
-        if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
-          Serial.println("sending render_request to render_request_queue");
-        }
-        if (current_sign_mode == SIGN_MODE_MBTA) {
-          if (xTimerReset(mbta_provider_timer_handle, TEN_MILLIS)) {
-            Serial.println("starting mbta provider timer");
-          }
-          // Send placeholder predictions while we wait for the real ones
-          RenderMessage message;
-          message.sign_mode = SIGN_MODE_MBTA;
-          message.mbta_content.status = PREDICTION_STATUS_OK;
-          mbta.get_placeholder_predictions(
-              (Prediction *)&message.mbta_content.predictions);
-          xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
-        } else if (current_sign_mode == SIGN_MODE_CLOCK) {
-          if (xTimerReset(clock_provider_timer_handle, TEN_MILLIS)) {
-            Serial.println("starting clock provider timer");
-          }
-        } else if (current_sign_mode == SIGN_MODE_MUSIC) {
-          // Send placeholder music info while we wait for the real info
-          RenderMessage message;
-          message.sign_mode = SIGN_MODE_MUSIC;
-          sprintf(message.text_content.text, "Nothing is playing");
-          xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
-          if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
-            Serial.println("starting music provider timer");
-          }
-        }
+        // save new sign mode, then restart
+        write_sign_mode(current_sign_mode);
+        ESP.restart();
       } else if (ui_message.type == UI_MESSAGE_TYPE_MBTA_CHANGE_STATION) {
         Serial.printf("updating mbta station to %s\n",
                       train_station_to_str(ui_message.next_station));
@@ -580,6 +532,43 @@ SignMode shift_sign_mode(SignMode current_sign_mode) {
     }
   }
   return next_sign_mode;
+}
+
+SignMode read_sign_mode() {
+  int current_sign_mode = preferences.getInt(SIGN_MODE_KEY, DEFAULT_SIGN_MODE);
+  return (SignMode)current_sign_mode;
+}
+
+void write_sign_mode(SignMode sign_mode) {
+  preferences.putInt(SIGN_MODE_KEY, (int)sign_mode);
+}
+
+void start_sign(SignMode current_sign_mode) {
+  if (current_sign_mode == SIGN_MODE_MBTA) {
+    if (xTimerReset(mbta_provider_timer_handle, TEN_MILLIS)) {
+      Serial.println("starting mbta provider timer");
+    }
+    // Send placeholder predictions while we wait for the real ones
+    RenderMessage message;
+    message.sign_mode = SIGN_MODE_MBTA;
+    message.mbta_content.status = PREDICTION_STATUS_OK;
+    mbta.get_placeholder_predictions(
+        (Prediction *)&message.mbta_content.predictions);
+    xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+  } else if (current_sign_mode == SIGN_MODE_CLOCK) {
+    if (xTimerReset(clock_provider_timer_handle, TEN_MILLIS)) {
+      Serial.println("starting clock provider timer");
+    }
+  } else if (current_sign_mode == SIGN_MODE_MUSIC) {
+    // Send placeholder music info while we wait for the real info
+    RenderMessage message;
+    message.sign_mode = SIGN_MODE_MUSIC;
+    sprintf(message.text_content.text, "Nothing is playing");
+    xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+    if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
+      Serial.println("starting music provider timer");
+    }
+  }
 }
 
 char *sign_mode_to_str(SignMode sign_mode) {

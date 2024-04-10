@@ -49,6 +49,8 @@ void clock_provider_timer(TimerHandle_t timer);
 void check_wifi_and_reconnect_timer(TimerHandle_t timer);
 
 SignMode shift_sign_mode(SignMode current_sign_mode);
+SignMode read_sign_mode();
+void write_sign_mode(SignMode sign_mode);
 char *sign_mode_to_str(SignMode sign_mode);
 
 #endif /* LED_MATRIX_SIGN_H */
