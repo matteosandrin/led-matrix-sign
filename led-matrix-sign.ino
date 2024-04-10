@@ -178,8 +178,19 @@ void setup() {
   display.log("Sync with NTP server");
   setup_time();
 
-  display.log("Refresh Spotify token");
-  spotify.setup();
+  // Preferences setup
+  preferences.begin("default");
+
+  // API setup
+  SignMode sign_mode = read_sign_mode();
+  if (sign_mode == SIGN_MODE_MBTA) {
+    display.log("Setup MBTA API");
+    mbta.setup();
+  }
+  if (sign_mode == SIGN_MODE_MUSIC) {
+    display.log("Setup Spotify API");
+    spotify.setup();
+  }
 
   // Webserver setup
   display.log("Setup webserver");
@@ -190,8 +201,7 @@ void setup() {
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
 
-  // Preferences setup
-  preferences.begin("default");
+  
 
   // Queue setup
   display.log("Setup RTOS queues");

@@ -15,15 +15,10 @@
   "grant_type=refresh_token&"         \
   "refresh_token=" SPOTIFY_REFRESH_TOKEN
 
-Spotify::Spotify() {
+void Spotify::setup() {
   this->wifi_client = new WiFiClientSecure;
   this->refresh_token_response = new DynamicJsonDocument(2048);
   this->currently_playing_response = new DynamicJsonDocument(2048);
-}
-
-void Spotify::setup() {
-  //   Preferences preferences;
-  //   preferences.begin("spotify");
   this->refresh_token();
 }
 
