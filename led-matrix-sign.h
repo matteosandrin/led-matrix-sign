@@ -8,7 +8,6 @@
 #define LED_MATRIX_SIGN_H
 
 QueueHandle_t ui_queue;
-QueueHandle_t sign_mode_queue;
 QueueHandle_t render_request_queue;
 QueueHandle_t render_response_queue;
 

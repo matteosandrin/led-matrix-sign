@@ -196,7 +196,6 @@ void setup() {
   // Queue setup
   display.log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
-  sign_mode_queue = xQueueCreate(1, sizeof(SignMode));
   render_request_queue = xQueueCreate(32, sizeof(RenderRequest));
   render_response_queue = xQueueCreate(32, sizeof(RenderMessage));
 
@@ -326,26 +325,16 @@ void render_task(void *params) {
   last_wake_time = xTaskGetTickCount();
   while (1) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
-    int current_sign_mode = -1;
-    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
-      continue;
-    }
     RenderMessage message;
     if (xQueueReceive(render_response_queue, &message, TEN_MILLIS)) {
-      if (message.sign_mode == current_sign_mode) {
-        if (message.sign_mode == SIGN_MODE_TEST) {
-          display.render_text_content(message.text_content, display.WHITE);
-        } else if (message.sign_mode == SIGN_MODE_MBTA) {
-          display.render_mbta_content(message.mbta_content);
-        } else if (message.sign_mode == SIGN_MODE_CLOCK) {
-          display.render_text_content(message.text_content, display.WHITE);
-        } else if (message.sign_mode == SIGN_MODE_MUSIC) {
-          display.render_music_content(message.music_content);
-        }
-      } else {
-        Serial.println(
-            "message.sign_type is different from current_sign_type. "
-            "Dropping the render message");
+      if (message.sign_mode == SIGN_MODE_TEST) {
+        display.render_text_content(message.text_content, display.WHITE);
+      } else if (message.sign_mode == SIGN_MODE_MBTA) {
+        display.render_mbta_content(message.mbta_content);
+      } else if (message.sign_mode == SIGN_MODE_CLOCK) {
+        display.render_text_content(message.text_content, display.WHITE);
+      } else if (message.sign_mode == SIGN_MODE_MUSIC) {
+        display.render_music_content(message.music_content);
       }
     }
   }
@@ -357,15 +346,6 @@ void test_provider_task(void *params) {
       "abcdefghijklmnopqrstuvwxyz\n"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
   while (1) {
-    int current_sign_mode = -1;
-    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
-    if (current_sign_mode != SIGN_MODE_TEST) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
     RenderRequest request;
     if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_TEST) {
@@ -385,15 +365,6 @@ void test_provider_task(void *params) {
 
 void mbta_provider_task(void *params) {
   while (1) {
-    int current_sign_mode = -1;
-    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
-    if (current_sign_mode != SIGN_MODE_MBTA) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
     RenderRequest request;
     if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_MBTA) {
@@ -429,15 +400,6 @@ void clock_provider_task(void *params) {
   last_wake_time = xTaskGetTickCount();
   while (1) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
-    int current_sign_mode = -1;
-    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
-    if (current_sign_mode != SIGN_MODE_CLOCK) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
     RenderRequest request;
     if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_CLOCK) {
@@ -462,15 +424,6 @@ void music_provider_task(void *params) {
   last_wake_time = xTaskGetTickCount();
   while (1) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
-    int current_sign_mode = -1;
-    if (!xQueuePeek(sign_mode_queue, &current_sign_mode, TEN_MILLIS)) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
-    if (current_sign_mode != SIGN_MODE_MUSIC) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      continue;
-    }
     RenderRequest request;
     if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_MUSIC) {
