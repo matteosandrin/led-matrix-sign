@@ -201,8 +201,6 @@ void setup() {
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
 
-  
-
   // Queue setup
   display.log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
