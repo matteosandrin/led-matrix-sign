@@ -298,7 +298,7 @@ void system_task(void *params) {
       if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT ||
           ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
         if (ui_message.type == UI_MESSAGE_TYPE_MODE_SHIFT) {
-          current_sign_mode = shift_sign_mode(current_sign_mode)
+          current_sign_mode = shift_sign_mode(current_sign_mode);
         } else if (ui_message.type == UI_MESSAGE_TYPE_MODE_CHANGE) {
           current_sign_mode = ui_message.next_sign_mode;
         }
