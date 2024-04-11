@@ -496,12 +496,20 @@ SignMode shift_sign_mode(SignMode current_sign_mode) {
 }
 
 SignMode read_sign_mode() {
-  int current_sign_mode = preferences.getInt(SIGN_MODE_KEY, DEFAULT_SIGN_MODE);
-  return (SignMode)current_sign_mode;
+  int sign_mode = preferences.getInt(SIGN_MODE_KEY, DEFAULT_SIGN_MODE);
+  if (sign_mode >= 0 && sign_mode < SIGN_MODE_MAX) {
+    return (SignMode)sign_mode;
+  } else {
+    return DEFAULT_SIGN_MODE;
+  }
 }
 
-void write_sign_mode(SignMode sign_mode) {
-  preferences.putInt(SIGN_MODE_KEY, (int)sign_mode);
+int write_sign_mode(SignMode sign_mode) {
+  if (sign_mode >= 0 && sign_mode < SIGN_MODE_MAX) {
+    preferences.putInt(SIGN_MODE_KEY, (int)sign_mode);
+    return 0;
+  }
+  return 1;
 }
 
 void start_sign(SignMode current_sign_mode) {
