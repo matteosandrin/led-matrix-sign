@@ -21,8 +21,8 @@ AsyncWebServer server(80);
 Preferences preferences;
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
-const char *ntpServer1 = "pool.ntp.org";
-const char *ntpServer2 = "time.nist.gov";
+const char *ntp_server_1 = "north-america.pool.ntp.org";
+const char *ntp_server_2 = "time.nist.gov";
 const char *time_zone = "EST5EDT,M3.2.0,M11.1.0";  // TZ_America_New_York
 
 SignMode disabled_sign_modes[] = {
@@ -66,7 +66,7 @@ void print_ram_info() {
 
 void setup_time() {
   sntp_servermode_dhcp(1);
-  configTzTime(time_zone, ntpServer1, ntpServer2);
+  configTzTime(time_zone, ntp_server_1, ntp_server_2);
   Serial.printf("Syncing time with NTP servers...");
   while (sntp_get_sync_status() != SNTP_SYNC_STATUS_COMPLETED) {
     Serial.printf(".");
