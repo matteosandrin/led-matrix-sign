@@ -516,6 +516,8 @@ void start_sign(SignMode current_sign_mode) {
     mbta.get_placeholder_predictions(
         (Prediction *)&message.mbta_content.predictions);
     xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+    // jumpstart timer
+    mbta_provider_timer(NULL);
   } else if (current_sign_mode == SIGN_MODE_CLOCK) {
     if (xTimerReset(clock_provider_timer_handle, TEN_MILLIS)) {
       Serial.println("starting clock provider timer");
