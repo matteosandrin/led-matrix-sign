@@ -82,37 +82,39 @@ void MBTA::set_station(TrainStation station) {
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
   if (this->wifi_client) {
     this->wifi_client->setInsecure();
-    HTTPClient https;
-    char request_url[256];
-    snprintf(request_url, 256, MBTA_REQUEST, MBTA_API_KEY,
-             this->train_station_codes[this->current_station]);
-    if (https.begin(*this->wifi_client, request_url)) {
-      int httpCode = https.GET();
-      Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-      if (httpCode > 0) {
-        // file found at server
-        if (httpCode == HTTP_CODE_OK ||
-            httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-          // filter down the response so less memory is used
-          StaticJsonDocument<1024> filter;
-          filter["data"][0]["attributes"]["arrival_time"] = true;
-          filter["data"][0]["attributes"]["departure_time"] = true;
-          filter["data"][0]["attributes"]["direction_id"] = true;
-          filter["data"][0]["attributes"]["status"] = true;
-          filter["data"][0]["relationships"]["trip"]["data"]["id"] = true;
-          filter["included"][0]["id"] = true;
-          filter["included"][0]["attributes"]["headsign"] = true;
+    if (!this->http_client.connected()) {
+      Serial.println("Starting new http connection to mbta api");
+      char request_url[256];
+      snprintf(request_url, 256, MBTA_REQUEST, MBTA_API_KEY,
+              this->train_station_codes[this->current_station]);
+      if (!this->http_client.begin(*this->wifi_client, request_url)) {
+        return 1;
+      }
+    }
+    int httpCode = this->http_client.GET();
+    Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+    if (httpCode > 0) {
+      // file found at server
+      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+        // filter down the response so less memory is used
+        StaticJsonDocument<1024> filter;
+        filter["data"][0]["attributes"]["arrival_time"] = true;
+        filter["data"][0]["attributes"]["departure_time"] = true;
+        filter["data"][0]["attributes"]["direction_id"] = true;
+        filter["data"][0]["attributes"]["status"] = true;
+        filter["data"][0]["relationships"]["trip"]["data"]["id"] = true;
+        filter["included"][0]["id"] = true;
+        filter["included"][0]["attributes"]["headsign"] = true;
 
-          DeserializationError error =
-              deserializeJson(*prediction_data, https.getStream(),
-                              DeserializationOption::Filter(filter));
-          if (error) {
-            Serial.print(F("deserializeJson() failed: "));
-            Serial.println(error.f_str());
-            return 1;
-          }
-          return 0;
+        DeserializationError error =
+            deserializeJson(*prediction_data, this->http_client.getStream(),
+                            DeserializationOption::Filter(filter));
+        if (error) {
+          Serial.print(F("deserializeJson() failed: "));
+          Serial.println(error.f_str());
+          return 1;
         }
+        return 0;
       }
     }
   }

@@ -1,5 +1,7 @@
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+
 #include <map>
 
 #ifndef MBTA_API_H
@@ -39,18 +41,19 @@ enum TrainStation {
 class MBTA {
   DynamicJsonDocument *prediction_data;
   WiFiClientSecure *wifi_client;
+  HTTPClient http_client;
   Prediction latest_predictions[2];
-  std::map<TrainStation, char*> train_station_codes = {
-    { TRAIN_STATION_ALEWIFE, "place-alfcl"},
-    { TRAIN_STATION_DAVIS, "place-davis"},
-    { TRAIN_STATION_PORTER, "place-portr"},
-    { TRAIN_STATION_HARVARD, "place-harsq"},
-    { TRAIN_STATION_CENTRAL, "place-cntsq"},
-    { TRAIN_STATION_KENDALL, "place-knncl"},
-    { TRAIN_STATION_CHARLES_MGH, "place-chmnl"},
-    { TRAIN_STATION_PARK_STREET, "place-pktrm"},
-    { TRAIN_STATION_DOWNTOWN_CROSSING, "place-dwnxg"},
-    { TRAIN_STATION_SOUTH_STATION, "place-sstat"},
+  std::map<TrainStation, char *> train_station_codes = {
+      {TRAIN_STATION_ALEWIFE, "place-alfcl"},
+      {TRAIN_STATION_DAVIS, "place-davis"},
+      {TRAIN_STATION_PORTER, "place-portr"},
+      {TRAIN_STATION_HARVARD, "place-harsq"},
+      {TRAIN_STATION_CENTRAL, "place-cntsq"},
+      {TRAIN_STATION_KENDALL, "place-knncl"},
+      {TRAIN_STATION_CHARLES_MGH, "place-chmnl"},
+      {TRAIN_STATION_PARK_STREET, "place-pktrm"},
+      {TRAIN_STATION_DOWNTOWN_CROSSING, "place-dwnxg"},
+      {TRAIN_STATION_SOUTH_STATION, "place-sstat"},
   };
   TrainStation current_station;
 
