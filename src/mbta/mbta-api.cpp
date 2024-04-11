@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "mbta-api-key.h"
+#include "mbta-cert.h"
 
 #define MBTA_REQUEST                                                    \
   "https://api-v3.mbta.com/predictions?"                                \
@@ -20,6 +21,7 @@
 void MBTA::setup() {
   this->prediction_data = new DynamicJsonDocument(8192);
   this->wifi_client = new WiFiClientSecure;
+  this->wifi_client->setCACert(mbta_certificate);
   this->get_placeholder_predictions(this->latest_predictions);
   this->current_station = DEFAULT_TRAIN_STATION;
 }
@@ -81,7 +83,6 @@ void MBTA::set_station(TrainStation station) {
 
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
   if (this->wifi_client) {
-    this->wifi_client->setInsecure();
     if (!this->http_client.connected()) {
       Serial.println("Starting new http connection to mbta api");
       char request_url[256];
