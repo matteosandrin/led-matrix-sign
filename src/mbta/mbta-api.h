@@ -81,7 +81,7 @@ class MBTA {
   bool show_arriving_banner(Prediction *prediction, int direction);
 
  public:
-  MBTA();
+  void setup();
   PredictionStatus get_predictions_both_directions(Prediction dst[2]);
 
   PredictionStatus get_predictions_one_direction(Prediction dst[2],

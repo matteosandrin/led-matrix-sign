@@ -32,7 +32,6 @@ class Spotify {
   void get_api_bearer_token(char *dst);
 
  public:
-  Spotify();
   void setup();
   SpotifyResponse refresh_token();
   SpotifyResponse get_currently_playing(CurrentlyPlaying *dst);

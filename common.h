@@ -25,4 +25,7 @@ enum SignMode {
   SIGN_MODE_MAX
 };
 
+#define SIGN_MODE_KEY "sign-mode-key"
+#define DEFAULT_SIGN_MODE SIGN_MODE_MBTA
+
 #endif /* COMMON_DEFS_H */

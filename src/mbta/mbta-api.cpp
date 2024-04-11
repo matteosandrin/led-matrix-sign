@@ -17,7 +17,7 @@
 
 #define DEFAULT_TRAIN_STATION TRAIN_STATION_HARVARD
 
-MBTA::MBTA() {
+void MBTA::setup() {
   this->prediction_data = new DynamicJsonDocument(8192);
   this->wifi_client = new WiFiClientSecure;
   this->get_placeholder_predictions(this->latest_predictions);
