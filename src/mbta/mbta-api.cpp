@@ -88,7 +88,7 @@ int MBTA::fetch_predictions(JsonDocument *prediction_data) {
       Serial.println("Starting new http connection to mbta api");
       char request_url[256];
       snprintf(request_url, 256, MBTA_REQUEST, MBTA_API_KEY,
-              this->train_station_codes[this->station]);
+               this->train_station_codes[this->station]);
       if (!this->http_client.begin(*this->wifi_client, request_url)) {
         return 1;
       }
