@@ -24,18 +24,6 @@ TimerHandle_t music_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
 
-enum UIMessageType {
-  UI_MESSAGE_TYPE_MODE_CHANGE,  // change to a specified sign mode
-  UI_MESSAGE_TYPE_MODE_SHIFT,   // shift to the next available sign mode
-  UI_MESSAGE_TYPE_MBTA_CHANGE_STATION,
-};
-
-struct UIMessage {
-  UIMessageType type;
-  SignMode next_sign_mode;
-  TrainStation next_station;
-};
-
 void system_task(void *params);
 void display_task(void *params);
 void test_provider_task(void *params);

@@ -3,6 +3,7 @@
 #include <Button2.h>
 #include <ESP.h>
 #include <ESPAsyncWebServer.h>
+#include <Preferences.h>
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -10,14 +11,14 @@
 #include <freertos/timers.h>
 #include <sntp.h>
 #include <time.h>
-#include <Preferences.h>
 
 #include "led-matrix-sign.h"
 #include "src/display/display.h"
 #include "src/mbta/mbta-api.h"
+#include "src/server/server.h"
 #include "src/spotify/spotify.h"
 
-AsyncWebServer server(80);
+lms::Server server;
 Preferences preferences;
 const char *ssid = "OliveBranch2.4GHz";
 const char *password = "Breadstick_lover_68";
@@ -84,98 +85,6 @@ void setup_time() {
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S%z");
 }
 
-void setup_webserver() {
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    char response[] = R"(
-      <!DOCTYPE html/>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-        <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
-        <style>
-          body {
-            font-family: system-ui, Roboto, Helvetica;
-          }
-        </style>
-        <title>LED Matrix Display</title>
-      </head>
-      <body>
-        <h1>LED Matrix Display</h1>
-        <form method="GET" action="/mode">
-          <h2>Set sign mode</h2>
-          <select name="id">
-            <option value="0">SIGN_MODE_TEST</option>
-            <option value="1">SIGN_MODE_MBTA</option>
-            <option value="2">SIGN_MODE_CLOCK</option>
-            <option value="3">SIGN_MODE_MUSIC</option>
-          </select>
-          <input type="submit" value="Set sign mode">
-        </form>
-        <form method="GET" action="/set">
-          <h2>Set MBTA station</h2>
-          <input name="key" type="hidden" value="station">
-          <select name="value">
-            <option value="0">Alewife</option>
-            <option value="1">Davis</option>
-            <option value="2">Porter</option>
-            <option value="3">Harvard</option>
-            <option value="4">Central</option>
-            <option value="5">Kendall/MIT</option>
-            <option value="6">Charles/MGH</option>
-            <option value="7">Park Street</option>
-            <option value="8">Downtown Crossing</option>
-            <option value="9">South Station</option>
-          </select>
-          <input type="submit" value="Set station">
-        </form>
-      </body>
-    )";
-    request->send(200, "text/html", response);
-  });
-  server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (request->hasParam("id")) {
-      String sign_mode_str = request->getParam("id")->value();
-      int sign_mode = sign_mode_str.toInt();
-      if (0 <= sign_mode && sign_mode < SIGN_MODE_MAX) {
-        UIMessage message;
-        message.type = UI_MESSAGE_TYPE_MODE_CHANGE;
-        message.next_sign_mode = (SignMode)sign_mode;
-        if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
-          request->redirect("/");
-          return;
-        }
-      }
-      request->send(500, "text/plain", "invalid sign mode: " + sign_mode_str);
-    }
-    request->send(500, "text/plain", "missing query parameter 'id'");
-  });
-  server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (request->hasParam("key") && request->hasParam("value")) {
-      String key = request->getParam("key")->value();
-      String value = request->getParam("value")->value();
-
-      if (key == "station") {
-        int station = value.toInt();
-        if (0 <= station < TRAIN_STATION_MAX) {
-          UIMessage message;
-          message.type = UI_MESSAGE_TYPE_MBTA_CHANGE_STATION;
-          message.next_station = (TrainStation)station;
-          if (xQueueSend(ui_queue, (void *)&message, TEN_MILLIS)) {
-            request->redirect("/");
-            return;
-          }
-        } else {
-          request->send(500, "text/plain", "invalid station id: " + value);
-        }
-      } else {
-        request->send(500, "text/plain", "unknown key '" + key + "'");
-      }
-    }
-    request->send(500, "text/plain", "missing query parameter 'id'");
-  });
-  server.begin();
-}
-
 void setup() {
   Serial.begin(115200);
   while (!Serial) continue;
@@ -198,10 +107,6 @@ void setup() {
     display.log("Setup Spotify API");
     spotify.setup();
   }
-
-  // Webserver setup
-  display.log("Setup webserver");
-  setup_webserver();
 
   // Button setup
   display.log("Setup button");
@@ -286,6 +191,11 @@ void setup() {
                           NULL,  // task parameters
                           1,     // task priority
                           &music_provider_task_handle, ESP32_CORE_0);
+
+  // Webserver setup
+  // this needs to happen after the RTOS setup, so we can pass the queue handle
+  display.log("Setup webserver");
+  server.setup(ui_queue);
 
   display.log("Setup DONE!");
 }
