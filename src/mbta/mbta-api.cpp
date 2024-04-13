@@ -23,7 +23,7 @@ void MBTA::setup() {
   this->wifi_client = new WiFiClientSecure;
   this->wifi_client->setCACert(mbta_certificate);
   this->get_placeholder_predictions(this->latest_predictions);
-  this->current_station = DEFAULT_TRAIN_STATION;
+  this->station = DEFAULT_TRAIN_STATION;
 }
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
@@ -77,20 +77,22 @@ void MBTA::get_placeholder_predictions(Prediction dst[2]) {
 }
 
 void MBTA::set_station(TrainStation station) {
-  this->current_station = station;
+  this->station = station;
+  this->has_station_changed = true;
   this->get_placeholder_predictions(this->latest_predictions);
 }
 
 int MBTA::fetch_predictions(JsonDocument *prediction_data) {
   if (this->wifi_client) {
-    if (!this->http_client.connected()) {
+    if (!this->http_client.connected() || this->has_station_changed) {
       Serial.println("Starting new http connection to mbta api");
       char request_url[256];
       snprintf(request_url, 256, MBTA_REQUEST, MBTA_API_KEY,
-              this->train_station_codes[this->current_station]);
+              this->train_station_codes[this->station]);
       if (!this->http_client.begin(*this->wifi_client, request_url)) {
         return 1;
       }
+      this->has_station_changed = false;
     }
     int httpCode = this->http_client.GET();
     Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
