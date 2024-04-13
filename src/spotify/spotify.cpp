@@ -3,6 +3,7 @@
 #include <base64.h>
 
 #include "spotify-api-key.h"
+#include "spotify-cert.h"
 
 #define SPOTIFY_REFRESH_TOKEN_URL "https://accounts.spotify.com/api/token"
 #define SPOTIFY_CURRENTLY_PLAYING_URL \
@@ -13,6 +14,7 @@
 
 void Spotify::setup() {
   lms::Client::setup(2048);
+  this->wifi_client->setCACert(spotify_certificate);
   this->refresh_token_response = new DynamicJsonDocument(2048);
   this->refresh_token();
 }
@@ -55,7 +57,6 @@ SpotifyResponse Spotify::refresh_token() {
 
 SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
   if (this->wifi_client) {
-    this->wifi_client->setInsecure();
     HTTPClient https;
     if (https.begin(*this->wifi_client, SPOTIFY_REFRESH_TOKEN_URL)) {
       char bearer[256];
@@ -88,7 +89,6 @@ SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
 SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
   this->check_refresh_token();
   if (this->wifi_client) {
-    this->wifi_client->setInsecure();
     if (!this->http_client.connected()) {
       Serial.println("Starting new http connection to spotify api");
       char bearer[256];
@@ -104,7 +104,8 @@ SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
     int http_code = this->http_client.GET();
     Serial.printf("[HTTPS] GET... code: %d\n", http_code);
     if (http_code > 0) {
-      if (http_code == HTTP_CODE_OK || http_code == HTTP_CODE_MOVED_PERMANENTLY) {
+      if (http_code == HTTP_CODE_OK ||
+          http_code == HTTP_CODE_MOVED_PERMANENTLY) {
         StaticJsonDocument<1024> filter;
         filter["item"]["type"] = true;
         filter["item"]["name"] = true;
