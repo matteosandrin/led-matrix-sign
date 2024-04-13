@@ -15,4 +15,6 @@ class Server {
   void setup(QueueHandle_t ui_queue);
 };
 
+String html_template_processor(const String &var);
+
 }; /* namespace lms */

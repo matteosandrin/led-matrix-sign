@@ -5,6 +5,39 @@
 
 namespace lms {
 
+const char index_html[] PROGMEM = R"(
+  <!DOCTYPE html/>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+    <style>
+      body {
+        font-family: system-ui, Roboto, Helvetica;
+      }
+    </style>
+    <title>LED Matrix Display</title>
+  </head>
+  <body>
+    <h1>LED Matrix Display</h1>
+    <form method="GET" action="/mode">
+      <h2>Set sign mode</h2>
+      <select name="id">
+        %SIGN_MODE_OPTIONS%
+      </select>
+      <input type="submit" value="Set sign mode">
+    </form>
+    <form method="GET" action="/set">
+      <h2>Set MBTA station</h2>
+      <input name="key" type="hidden" value="station">
+      <select name="value">
+        %TRAIN_STATION_OPTIONS%
+      </select>
+      <input type="submit" value="Set station">
+    </form>
+  </body>
+)";
+
 void Server::setup(QueueSetHandle_t ui_queue) {
   this->ui_queue = ui_queue;
   this->setup_index();
@@ -15,51 +48,7 @@ void Server::setup(QueueSetHandle_t ui_queue) {
 
 void Server::setup_index() {
   this->server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    char response[] = R"(
-      <!DOCTYPE html/>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-        <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
-        <style>
-          body {
-            font-family: system-ui, Roboto, Helvetica;
-          }
-        </style>
-        <title>LED Matrix Display</title>
-      </head>
-      <body>
-        <h1>LED Matrix Display</h1>
-        <form method="GET" action="/mode">
-          <h2>Set sign mode</h2>
-          <select name="id">
-            <option value="0">SIGN_MODE_TEST</option>
-            <option value="1">SIGN_MODE_MBTA</option>
-            <option value="2">SIGN_MODE_CLOCK</option>
-            <option value="3">SIGN_MODE_MUSIC</option>
-          </select>
-          <input type="submit" value="Set sign mode">
-        </form>
-        <form method="GET" action="/set">
-          <h2>Set MBTA station</h2>
-          <input name="key" type="hidden" value="station">
-          <select name="value">
-            <option value="0">Alewife</option>
-            <option value="1">Davis</option>
-            <option value="2">Porter</option>
-            <option value="3">Harvard</option>
-            <option value="4">Central</option>
-            <option value="5">Kendall/MIT</option>
-            <option value="6">Charles/MGH</option>
-            <option value="7">Park Street</option>
-            <option value="8">Downtown Crossing</option>
-            <option value="9">South Station</option>
-          </select>
-          <input type="submit" value="Set station">
-        </form>
-      </body>
-    )";
-    request->send(200, "text/html", response);
+    request->send_P(200, "text/html", index_html, html_template_processor);
   });
 }
 
@@ -72,8 +61,8 @@ void Server::setup_mode() {
         UIMessage message;
         message.type = UI_MESSAGE_TYPE_MODE_CHANGE;
         message.next_sign_mode = (SignMode)sign_mode;
+        request->redirect("/");
         if (xQueueSend(this->ui_queue, (void *)&message, TEN_MILLIS)) {
-          request->redirect("/");
           return;
         }
       }
@@ -108,6 +97,29 @@ void Server::setup_set() {
     }
     request->send(500, "text/plain", "missing query parameter 'id'");
   });
+}
+
+String html_template_processor(const String &var) {
+  String options = "";
+  if (var == "SIGN_MODE_OPTIONS") {
+    for (int i = 0; i < SignMode::SIGN_MODE_MAX; i++) {
+      SignMode sign_mode = (SignMode)i;
+      char option_char[64];
+      snprintf(option_char, 64, "<option value=\"%d\">%s</option>\n", sign_mode,
+               sign_mode_to_str(sign_mode));
+      options += option_char;
+    }
+  }
+  if (var == "TRAIN_STATION_OPTIONS") {
+    for (int i = 0; i < TrainStation::TRAIN_STATION_MAX; i++) {
+      TrainStation station = (TrainStation)i;
+      char option_char[64];
+      snprintf(option_char, 64, "<option value=\"%d\">%s</option>\n", station,
+               train_station_to_str(station));
+      options += option_char;
+    }
+  }
+  return options;
 }
 
 } /* namespace lms */

@@ -42,4 +42,6 @@ struct UIMessage {
   TrainStation next_station;
 };
 
+char *sign_mode_to_str(SignMode sign_mode);
+
 #endif /* COMMON_DEFS_H */
