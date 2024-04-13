@@ -1,7 +1,7 @@
 #include <Button2.h>
 
 #include "common.h"
-#include "src/mbta/mbta-api.h"
+#include "src/mbta/mbta.h"
 #include "src/spotify/spotify.h"
 
 #ifndef LED_MATRIX_SIGN_H

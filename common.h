@@ -1,7 +1,7 @@
 #ifndef COMMON_DEFS_H
 #define COMMON_DEFS_H
 
-#include "src/mbta/mbta-api.h"
+#include "src/mbta/mbta.h"
 
 #define PANEL_RES_X \
   32  // Number of pixels wide of each INDIVIDUAL panel module.
