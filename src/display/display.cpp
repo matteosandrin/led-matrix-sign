@@ -1,6 +1,6 @@
 #include "display.h"
 
-#include "../mbta/MBTASans.h"
+#include "../fonts/MBTASans.h"
 #include "display-pins.h"
 
 Display::Display() : canvas(SCREEN_WIDTH, SCREEN_HEIGHT) {
@@ -130,6 +130,7 @@ void Display::render_music_content(MusicRenderContent content) {
   this->canvas.fillScreen(BLACK);
   this->canvas.setFont(NULL);
   this->canvas.setTextColor(SPOTIFY_GREEN);
+  this->canvas.setTextWrap(false);
   this->canvas.setCursor(0, 0);
   if (content.status == SPOTIFY_RESPONSE_OK) {
     CurrentlyPlaying playing = content.data;
