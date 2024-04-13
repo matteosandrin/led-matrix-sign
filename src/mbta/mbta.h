@@ -1,8 +1,6 @@
-#include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
-
 #include <map>
+
+#include "../client/client.h"
 
 #ifndef MBTA_API_H
 #define MBTA_API_H
@@ -38,10 +36,7 @@ enum TrainStation {
   TRAIN_STATION_MAX,
 };
 
-class MBTA {
-  DynamicJsonDocument *prediction_data;
-  WiFiClientSecure *wifi_client;
-  HTTPClient http_client;
+class MBTA : lms::Client {
   Prediction latest_predictions[2];
   std::map<TrainStation, char *> train_station_codes = {
       {TRAIN_STATION_ALEWIFE, "place-alfcl"},

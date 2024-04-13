@@ -1,10 +1,12 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 
+#include "../client/client.h"
+
 #ifndef SPOTIFY_H
 #define SPOTIFY_H
 
-#define SPOTIFY_TOKEN_REFRESH_RATE 30 * 60 * 1000 // 30 min in millis
+#define SPOTIFY_TOKEN_REFRESH_RATE 30 * 60 * 1000  // 30 min in millis
 
 enum SpotifyResponse {
   SPOTIFY_RESPONSE_OK,
@@ -19,12 +21,10 @@ struct CurrentlyPlaying {
   int32_t progress_ms;
 };
 
-class Spotify {
+class Spotify : lms::Client {
   char access_token[256];
   unsigned long last_refresh_time;
-  WiFiClientSecure *wifi_client;
   DynamicJsonDocument *refresh_token_response;
-  DynamicJsonDocument *currently_playing_response;
   SpotifyResponse fetch_currently_playing(JsonDocument *dst);
   SpotifyResponse fetch_refresh_token(char *dst);
   void check_refresh_token();

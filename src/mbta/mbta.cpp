@@ -1,8 +1,5 @@
 #include "mbta.h"
 
-#include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <time.h>
 
 #include "mbta-api-key.h"
@@ -19,8 +16,7 @@
 #define DEFAULT_TRAIN_STATION TRAIN_STATION_HARVARD
 
 void MBTA::setup() {
-  this->prediction_data = new DynamicJsonDocument(8192);
-  this->wifi_client = new WiFiClientSecure;
+  lms::Client::setup(8192);
   this->wifi_client->setCACert(mbta_certificate);
   this->get_placeholder_predictions(this->latest_predictions);
   this->station = DEFAULT_TRAIN_STATION;
@@ -28,18 +24,17 @@ void MBTA::setup() {
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
                                        int directions[], int nth_positions[]) {
-  int status = this->fetch_predictions(this->prediction_data);
+  int status = this->fetch_predictions(this->data);
   if (status != 0) {
     return PREDICTION_STATUS_ERROR;
   }
   for (int i = 0; i < num_predictions; i++) {
     JsonObject prediction = this->find_nth_prediction_for_direction(
-        this->prediction_data, directions[i], nth_positions[i]);
+        this->data, directions[i], nth_positions[i]);
     if (prediction.isNull()) {
       return PREDICTION_STATUS_ERROR;
     }
-    JsonObject trip =
-        this->find_trip_for_prediction(this->prediction_data, prediction);
+    JsonObject trip = this->find_trip_for_prediction(this->data, prediction);
     if (trip.isNull()) {
       return PREDICTION_STATUS_ERROR;
     }
@@ -52,7 +47,7 @@ PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
     prediction_status = PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2;
   }
   this->update_latest_predictions(dst, directions);
-  this->prediction_data->clear();
+  this->data->clear();
   return prediction_status;
 }
 

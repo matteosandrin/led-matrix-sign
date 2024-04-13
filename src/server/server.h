@@ -3,6 +3,8 @@
 
 #include "../../common.h"
 
+#ifndef LMS_SERVER_H
+#define LMS_SERVER_H
 namespace lms {
 
 class Server {
@@ -20,3 +22,5 @@ class Server {
 };
 
 }; /* namespace lms */
+
+#endif /* LMS_SERVER_H */

@@ -16,26 +16,24 @@
   "refresh_token=" SPOTIFY_REFRESH_TOKEN
 
 void Spotify::setup() {
-  this->wifi_client = new WiFiClientSecure;
+  lms::Client::setup(2048);
   this->refresh_token_response = new DynamicJsonDocument(2048);
-  this->currently_playing_response = new DynamicJsonDocument(2048);
   this->refresh_token();
 }
 
 SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
-  SpotifyResponse status =
-     this->fetch_currently_playing(currently_playing_response);
+  SpotifyResponse status = this->fetch_currently_playing(data);
   if (status != SPOTIFY_RESPONSE_OK) {
     return status;
   }
-  serializeJsonPretty(*this->currently_playing_response, Serial);
-  JsonObject currently_playing = (*this->currently_playing_response)["item"];
+  serializeJsonPretty(*this->data, Serial);
+  JsonObject currently_playing = (*this->data)["item"];
   String artist = currently_playing["artists"][0]["name"];
   String name = currently_playing["name"];
   artist.toCharArray(dst->artist, 64);
   name.toCharArray(dst->title, 64);
   dst->duration_ms = currently_playing["duration_ms"];
-  dst->progress_ms = (*this->currently_playing_response)["progress_ms"];
+  dst->progress_ms = (*this->data)["progress_ms"];
   return SPOTIFY_RESPONSE_OK;
 }
 
@@ -73,8 +71,8 @@ SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
       if (httpCode > 0) {
         if (httpCode == HTTP_CODE_OK ||
             httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-          DeserializationError error = deserializeJson(
-              *this->refresh_token_response, https.getStream());
+          DeserializationError error =
+              deserializeJson(*this->refresh_token_response, https.getStream());
           if (error) {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
