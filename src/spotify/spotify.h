@@ -24,7 +24,6 @@ struct CurrentlyPlaying {
 class Spotify : lms::Client {
   char access_token[256];
   unsigned long last_refresh_time;
-  DynamicJsonDocument *refresh_token_response;
   SpotifyResponse fetch_currently_playing(JsonDocument *dst);
   SpotifyResponse fetch_refresh_token(char *dst);
   void check_refresh_token();

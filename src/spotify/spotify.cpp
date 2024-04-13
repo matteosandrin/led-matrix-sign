@@ -15,7 +15,6 @@
 void Spotify::setup() {
   lms::Client::setup(2048);
   this->wifi_client->setCACert(spotify_certificate);
-  this->refresh_token_response = new DynamicJsonDocument(2048);
   this->refresh_token();
 }
 
@@ -69,14 +68,14 @@ SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
         if (http_code == HTTP_CODE_OK ||
             http_code == HTTP_CODE_MOVED_PERMANENTLY) {
           DeserializationError error =
-              deserializeJson(*this->refresh_token_response, https.getStream());
+              deserializeJson(*this->data, https.getStream());
           if (error) {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
             return SPOTIFY_RESPONSE_ERROR;
           }
           String access_code_str =
-              (*this->refresh_token_response)["access_token"];
+              (*this->data)["access_token"];
           access_code_str.toCharArray(dst, 256);
           return SPOTIFY_RESPONSE_OK;
         }
