@@ -101,26 +101,33 @@ void setup_webserver() {
       </head>
       <body>
         <h1>LED Matrix Display</h1>
-        <h2>Set sign mode</h2>
-        <ul>
-          <li><a href="/mode?id=0">SIGN_MODE_TEST</a></li>
-          <li><a href="/mode?id=1">SIGN_MODE_MBTA</a></li>
-          <li><a href="/mode?id=2">SIGN_MODE_CLOCK</a></li>
-          <li><a href="/mode?id=3">SIGN_MODE_MUSIC</a></li>
-        </ul>
-        <h2>Set MBTA station</h2>
-        <ul>
-          <li><a href="/set?key=station&value=0">Alewife</a></li>
-          <li><a href="/set?key=station&value=1">Davis</a></li>
-          <li><a href="/set?key=station&value=2">Porter</a></li>
-          <li><a href="/set?key=station&value=3">Harvard</a></li>
-          <li><a href="/set?key=station&value=4">Central</a></li>
-          <li><a href="/set?key=station&value=5">Kendall/MIT</a></li>
-          <li><a href="/set?key=station&value=6">Charles/MGH</a></li>
-          <li><a href="/set?key=station&value=7">Park Street</a></li>
-          <li><a href="/set?key=station&value=8">Downtown Crossing</a></li>
-          <li><a href="/set?key=station&value=9">South Station</a></li>
-        </ul>
+        <form method="GET" action="/mode">
+          <h2>Set sign mode</h2>
+          <select name="id">
+            <option value="0">SIGN_MODE_TEST</option>
+            <option value="1">SIGN_MODE_MBTA</option>
+            <option value="2">SIGN_MODE_CLOCK</option>
+            <option value="3">SIGN_MODE_MUSIC</option>
+          </select>
+          <input type="submit" value="Set sign mode">
+        </form>
+        <form method="GET" action="/set">
+          <h2>Set MBTA station</h2>
+          <input name="key" type="hidden" value="station">
+          <select name="value">
+            <option value="0">Alewife</option>
+            <option value="1">Davis</option>
+            <option value="2">Porter</option>
+            <option value="3">Harvard</option>
+            <option value="4">Central</option>
+            <option value="5">Kendall/MIT</option>
+            <option value="6">Charles/MGH</option>
+            <option value="7">Park Street</option>
+            <option value="8">Downtown Crossing</option>
+            <option value="9">South Station</option>
+          </select>
+          <input type="submit" value="Set station">
+        </form>
       </body>
     )";
     request->send(200, "text/html", response);
