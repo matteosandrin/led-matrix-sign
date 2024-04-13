@@ -195,7 +195,8 @@ void setup() {
   // Webserver setup
   // this needs to happen after the RTOS setup, so we can pass the queue handle
   display.log("Setup webserver");
-  server.setup(ui_queue);
+  SignMode current_sign_mode = read_sign_mode();
+  server.setup(current_sign_mode, ui_queue);
 
   display.log("Setup DONE!");
 }

@@ -1,6 +1,5 @@
 #include "server.h"
 
-#include "../../common.h"
 #include "../mbta/mbta-api.h"
 
 namespace lms {
@@ -38,7 +37,8 @@ const char index_html[] PROGMEM = R"(
   </body>
 )";
 
-void Server::setup(QueueSetHandle_t ui_queue) {
+void Server::setup(SignMode sign_mode, QueueSetHandle_t ui_queue) {
+  this->sign_mode = sign_mode;
   this->ui_queue = ui_queue;
   this->setup_index();
   this->setup_mode();
@@ -47,8 +47,11 @@ void Server::setup(QueueSetHandle_t ui_queue) {
 }
 
 void Server::setup_index() {
-  this->server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send_P(200, "text/html", index_html, html_template_processor);
+  this->server.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
+    AwsTemplateProcessor processor = [this](const String &var) {
+      return this->html_template_processor(var);
+    };
+    request->send_P(200, "text/html", index_html, processor);
   });
 }
 
@@ -99,14 +102,18 @@ void Server::setup_set() {
   });
 }
 
-String html_template_processor(const String &var) {
+String Server::html_template_processor(const String &var) {
   String options = "";
   if (var == "SIGN_MODE_OPTIONS") {
     for (int i = 0; i < SignMode::SIGN_MODE_MAX; i++) {
       SignMode sign_mode = (SignMode)i;
       char option_char[64];
-      snprintf(option_char, 64, "<option value=\"%d\">%s</option>\n", sign_mode,
-               sign_mode_to_str(sign_mode));
+      char selected[16] = "";
+      if (sign_mode == this->sign_mode) {
+        strncpy(selected, "selected", 16);
+      }
+      snprintf(option_char, 64, "<option value=\"%d\" %s>%s</option>\n",
+               sign_mode, selected, sign_mode_to_str(sign_mode));
       options += option_char;
     }
   }
