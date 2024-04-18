@@ -31,6 +31,7 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   name.toCharArray(dst->title, 64);
   dst->duration_ms = currently_playing["duration_ms"];
   dst->progress_ms = (*this->data)["progress_ms"];
+  this->update_current_song(dst);
   return SPOTIFY_RESPONSE_OK;
 }
 
@@ -134,4 +135,11 @@ void Spotify::check_refresh_token() {
     Serial.println("refreshing spotify token after 30min");
     this->refresh_token();
   }
+}
+
+void Spotify::update_current_song(CurrentlyPlaying *src) {
+  strncpy(this->current_song.title, src->title, 64);
+  strncpy(this->current_song.artist, src->artist, 64);
+  this->current_song.duration_ms = src->duration_ms;
+  this->current_song.progress_ms = src->progress_ms;
 }

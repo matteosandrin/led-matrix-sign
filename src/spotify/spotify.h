@@ -29,11 +29,13 @@ class Spotify : lms::Client {
   void check_refresh_token();
   void get_refresh_bearer_token(char *dst);
   void get_api_bearer_token(char *dst);
+  void update_current_song(CurrentlyPlaying *src);
 
  public:
   void setup();
   SpotifyResponse refresh_token();
   SpotifyResponse get_currently_playing(CurrentlyPlaying *dst);
+  CurrentlyPlaying current_song;
 };
 
 #endif /* SPOTIFY_H */
