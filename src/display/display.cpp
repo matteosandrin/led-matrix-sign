@@ -52,11 +52,11 @@ int Display::justify_center(char *str, int char_width) {
   return cursor_x;
 }
 
-void Display::render_text_content(TextRenderContent content, uint16_t color) {
+void Display::render_text_content(TextRenderContent content) {
   Serial.println("Rendering text content");
   this->canvas.fillScreen(BLACK);
   this->canvas.setFont(NULL);
-  this->canvas.setTextColor(color);
+  this->canvas.setTextColor(content.color);
   this->canvas.setCursor(0, 0);
   this->canvas.print(content.text);
   this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),

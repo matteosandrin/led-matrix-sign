@@ -229,7 +229,7 @@ void system_task(void *params) {
         mbta.set_station(ui_message.next_station);
         if (current_sign_mode == SIGN_MODE_MBTA) {
           RenderMessage message;
-          message.sign_mode = SIGN_MODE_MBTA;
+          message.type = RENDER_TYPE_MBTA;
           message.mbta_content.status =
               PREDICTION_STATUS_OK_SHOW_STATION_BANNER;
           strcpy(message.mbta_content.predictions[0].label,
@@ -253,13 +253,11 @@ void render_task(void *params) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
     RenderMessage message;
     if (xQueueReceive(render_response_queue, &message, TEN_MILLIS)) {
-      if (message.sign_mode == SIGN_MODE_TEST) {
-        display.render_text_content(message.text_content, display.WHITE);
-      } else if (message.sign_mode == SIGN_MODE_MBTA) {
+      if (message.type == RENDER_TYPE_MBTA) {
         display.render_mbta_content(message.mbta_content);
-      } else if (message.sign_mode == SIGN_MODE_CLOCK) {
-        display.render_text_content(message.text_content, display.WHITE);
-      } else if (message.sign_mode == SIGN_MODE_MUSIC) {
+      } else if (message.type == RENDER_TYPE_TEXT) {
+        display.render_text_content(message.text_content);
+      } else if (message.type == RENDER_TYPE_MUSIC) {
         display.render_music_content(message.music_content);
       }
     }
@@ -277,7 +275,7 @@ void test_provider_task(void *params) {
       if (request.sign_mode == SIGN_MODE_TEST) {
         xQueueReceive(render_request_queue, &request, TEN_MILLIS);
         RenderMessage message;
-        message.sign_mode = SIGN_MODE_TEST;
+        message.type = RENDER_TYPE_TEXT;
         strcpy(message.text_content.text, test_text);
         if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
           Serial.println(
@@ -296,7 +294,7 @@ void mbta_provider_task(void *params) {
       if (request.sign_mode == SIGN_MODE_MBTA) {
         xQueueReceive(render_request_queue, &request, TEN_MILLIS);
         RenderMessage message;
-        message.sign_mode = SIGN_MODE_MBTA;
+        message.type = RENDER_TYPE_MBTA;
         // Two predictions, one for southbound trains and one for northbound
         // trains
         Prediction predictions[2];
@@ -331,7 +329,7 @@ void clock_provider_task(void *params) {
       if (request.sign_mode == SIGN_MODE_CLOCK) {
         xQueueReceive(render_request_queue, &request, TEN_MILLIS);
         RenderMessage message;
-        message.sign_mode = SIGN_MODE_CLOCK;
+        message.type = RENDER_TYPE_TEXT;
         struct tm timeinfo;
         getLocalTime(&timeinfo);
         strftime(message.text_content.text, 128, "%A, %B %d %Y\n%H:%M:%S",
@@ -355,7 +353,7 @@ void music_provider_task(void *params) {
       if (request.sign_mode == SIGN_MODE_MUSIC) {
         xQueueReceive(render_request_queue, &request, TEN_MILLIS);
         RenderMessage message;
-        message.sign_mode = SIGN_MODE_MUSIC;
+        message.type = RENDER_TYPE_MUSIC;
         CurrentlyPlaying currently_playing;
         SpotifyResponse status =
             spotify.get_currently_playing(&currently_playing);
@@ -437,7 +435,7 @@ void start_sign(SignMode current_sign_mode) {
     }
     // Send placeholder predictions while we wait for the real ones
     RenderMessage message;
-    message.sign_mode = SIGN_MODE_MBTA;
+    message.type = RENDER_TYPE_MBTA;
     message.mbta_content.status = PREDICTION_STATUS_OK;
     mbta.get_placeholder_predictions(
         (Prediction *)&message.mbta_content.predictions);
@@ -451,7 +449,7 @@ void start_sign(SignMode current_sign_mode) {
   } else if (current_sign_mode == SIGN_MODE_MUSIC) {
     // Send placeholder music info while we wait for the real info
     RenderMessage message;
-    message.sign_mode = SIGN_MODE_MUSIC;
+    message.type = RENDER_TYPE_MUSIC;
     sprintf(message.text_content.text, "Nothing is playing");
     xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
     if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {

@@ -7,6 +7,12 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+enum RenderType {
+  RENDER_TYPE_MBTA,
+  RENDER_TYPE_TEXT,
+  RENDER_TYPE_MUSIC,
+};
+
 struct MBTARenderContent {
   PredictionStatus status;
   Prediction predictions[2];
@@ -14,6 +20,7 @@ struct MBTARenderContent {
 
 struct TextRenderContent {
   char text[128];
+  int16_t color;
 };
 
 struct MusicRenderContent {
@@ -22,7 +29,7 @@ struct MusicRenderContent {
 };
 
 struct RenderMessage {
-  SignMode sign_mode;
+  RenderType type;
   MBTARenderContent mbta_content;
   TextRenderContent text_content;
   MusicRenderContent music_content;
@@ -46,7 +53,7 @@ class Display {
   Display();
   void setup();
   void log(char *message);
-  void render_text_content(TextRenderContent content, uint16_t color);
+  void render_text_content(TextRenderContent content);
   void render_mbta_content(MBTARenderContent content);
   void render_music_content(MusicRenderContent content);
 

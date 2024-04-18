@@ -25,7 +25,7 @@ TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
 
 void system_task(void *params);
-void display_task(void *params);
+void render_task(void *params);
 void test_provider_task(void *params);
 void mbta_provider_task(void *params);
 void clock_provider_task(void *params);
