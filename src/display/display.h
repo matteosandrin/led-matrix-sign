@@ -28,11 +28,15 @@ struct MusicRenderContent {
   CurrentlyPlaying data;
 };
 
+union RenderContent {
+  MBTARenderContent mbta;
+  TextRenderContent text;
+  MusicRenderContent music;
+};
+
 struct RenderMessage {
   RenderType type;
-  MBTARenderContent mbta_content;
-  TextRenderContent text_content;
-  MusicRenderContent music_content;
+  RenderContent content;
 };
 
 class Display {

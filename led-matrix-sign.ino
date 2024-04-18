@@ -230,9 +230,9 @@ void system_task(void *params) {
         if (current_sign_mode == SIGN_MODE_MBTA) {
           RenderMessage message;
           message.type = RENDER_TYPE_MBTA;
-          message.mbta_content.status =
+          message.content.mbta.status =
               PREDICTION_STATUS_OK_SHOW_STATION_BANNER;
-          strcpy(message.mbta_content.predictions[0].label,
+          strcpy(message.content.mbta.predictions[0].label,
                  train_station_to_str(ui_message.next_station));
           if (xQueueSend(render_queue, (void *)&message, TEN_MILLIS)) {
             Serial.println("show updated mbta station on display");
@@ -254,11 +254,11 @@ void render_task(void *params) {
     RenderMessage message;
     if (xQueueReceive(render_queue, &message, TEN_MILLIS)) {
       if (message.type == RENDER_TYPE_MBTA) {
-        display.render_mbta_content(message.mbta_content);
+        display.render_mbta_content(message.content.mbta);
       } else if (message.type == RENDER_TYPE_TEXT) {
-        display.render_text_content(message.text_content);
+        display.render_text_content(message.content.text);
       } else if (message.type == RENDER_TYPE_MUSIC) {
-        display.render_music_content(message.music_content);
+        display.render_music_content(message.content.music);
       }
     }
   }
@@ -276,7 +276,7 @@ void test_provider_task(void *params) {
         xQueueReceive(provider_queue, &request, TEN_MILLIS);
         RenderMessage message;
         message.type = RENDER_TYPE_TEXT;
-        strcpy(message.text_content.text, test_text);
+        strcpy(message.content.text.text, test_text);
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
               "sending test render_message to render_queue");
@@ -300,13 +300,13 @@ void mbta_provider_task(void *params) {
         Prediction predictions[2];
         PredictionStatus status =
             mbta.get_predictions_both_directions(predictions);
-        message.mbta_content.status = status;
+        message.content.mbta.status = status;
         if (status == PREDICTION_STATUS_OK ||
             status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
             status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2 ||
             status == PREDICTION_STATUS_OK_SHOW_STATION_BANNER) {
-          message.mbta_content.predictions[0] = predictions[0];
-          message.mbta_content.predictions[1] = predictions[1];
+          message.content.mbta.predictions[0] = predictions[0];
+          message.content.mbta.predictions[1] = predictions[1];
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
@@ -332,7 +332,7 @@ void clock_provider_task(void *params) {
         message.type = RENDER_TYPE_TEXT;
         struct tm timeinfo;
         getLocalTime(&timeinfo);
-        strftime(message.text_content.text, 128, "%A, %B %d %Y\n%H:%M:%S",
+        strftime(message.content.text.text, 128, "%A, %B %d %Y\n%H:%M:%S",
                  &timeinfo);
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
@@ -357,9 +357,9 @@ void music_provider_task(void *params) {
         CurrentlyPlaying currently_playing;
         SpotifyResponse status =
             spotify.get_currently_playing(&currently_playing);
-        message.music_content.status = status;
+        message.content.music.status = status;
         if (status == SPOTIFY_RESPONSE_OK) {
-          message.music_content.data = currently_playing;
+          message.content.music.data = currently_playing;
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
@@ -436,9 +436,9 @@ void start_sign(SignMode current_sign_mode) {
     // Send placeholder predictions while we wait for the real ones
     RenderMessage message;
     message.type = RENDER_TYPE_MBTA;
-    message.mbta_content.status = PREDICTION_STATUS_OK;
+    message.content.mbta.status = PREDICTION_STATUS_OK;
     mbta.get_placeholder_predictions(
-        (Prediction *)&message.mbta_content.predictions);
+        (Prediction *)&message.content.mbta.predictions);
     xQueueSend(render_queue, (void *)&message, TEN_MILLIS);
     // jumpstart timer
     mbta_provider_timer(NULL);
@@ -450,7 +450,7 @@ void start_sign(SignMode current_sign_mode) {
     // Send placeholder music info while we wait for the real info
     RenderMessage message;
     message.type = RENDER_TYPE_MUSIC;
-    sprintf(message.text_content.text, "Nothing is playing");
+    sprintf(message.content.text.text, "Nothing is playing");
     xQueueSend(render_queue, (void *)&message, TEN_MILLIS);
     if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
       Serial.println("starting music provider timer");
