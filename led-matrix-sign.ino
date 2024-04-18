@@ -116,8 +116,8 @@ void setup() {
   // Queue setup
   display.log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
-  render_request_queue = xQueueCreate(32, sizeof(RenderRequest));
-  render_response_queue = xQueueCreate(32, sizeof(RenderMessage));
+  provider_queue = xQueueCreate(32, sizeof(ProviderRequest));
+  render_queue = xQueueCreate(32, sizeof(RenderMessage));
 
   // Timer setup
   display.log("Setup RTOS timers");
@@ -234,7 +234,7 @@ void system_task(void *params) {
               PREDICTION_STATUS_OK_SHOW_STATION_BANNER;
           strcpy(message.mbta_content.predictions[0].label,
                  train_station_to_str(ui_message.next_station));
-          if (xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS)) {
+          if (xQueueSend(render_queue, (void *)&message, TEN_MILLIS)) {
             Serial.println("show updated mbta station on display");
           }
           // manually request a new MBTA frame
@@ -252,7 +252,7 @@ void render_task(void *params) {
   while (1) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
     RenderMessage message;
-    if (xQueueReceive(render_response_queue, &message, TEN_MILLIS)) {
+    if (xQueueReceive(render_queue, &message, TEN_MILLIS)) {
       if (message.type == RENDER_TYPE_MBTA) {
         display.render_mbta_content(message.mbta_content);
       } else if (message.type == RENDER_TYPE_TEXT) {
@@ -270,16 +270,16 @@ void test_provider_task(void *params) {
       "abcdefghijklmnopqrstuvwxyz\n"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
   while (1) {
-    RenderRequest request;
-    if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
+    ProviderRequest request;
+    if (xQueuePeek(provider_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_TEST) {
-        xQueueReceive(render_request_queue, &request, TEN_MILLIS);
+        xQueueReceive(provider_queue, &request, TEN_MILLIS);
         RenderMessage message;
         message.type = RENDER_TYPE_TEXT;
         strcpy(message.text_content.text, test_text);
-        if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
+        if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
-              "sending test render_message to render_response_queue");
+              "sending test render_message to render_queue");
         }
       }
     }
@@ -289,10 +289,10 @@ void test_provider_task(void *params) {
 
 void mbta_provider_task(void *params) {
   while (1) {
-    RenderRequest request;
-    if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
+    ProviderRequest request;
+    if (xQueuePeek(provider_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_MBTA) {
-        xQueueReceive(render_request_queue, &request, TEN_MILLIS);
+        xQueueReceive(provider_queue, &request, TEN_MILLIS);
         RenderMessage message;
         message.type = RENDER_TYPE_MBTA;
         // Two predictions, one for southbound trains and one for northbound
@@ -308,9 +308,9 @@ void mbta_provider_task(void *params) {
           message.mbta_content.predictions[0] = predictions[0];
           message.mbta_content.predictions[1] = predictions[1];
         }
-        if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
+        if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
-              "sending mbta render_message to render_response_queue");
+              "sending mbta render_message to render_queue");
           print_ram_info();
         }
       }
@@ -324,19 +324,19 @@ void clock_provider_task(void *params) {
   last_wake_time = xTaskGetTickCount();
   while (1) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
-    RenderRequest request;
-    if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
+    ProviderRequest request;
+    if (xQueuePeek(provider_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_CLOCK) {
-        xQueueReceive(render_request_queue, &request, TEN_MILLIS);
+        xQueueReceive(provider_queue, &request, TEN_MILLIS);
         RenderMessage message;
         message.type = RENDER_TYPE_TEXT;
         struct tm timeinfo;
         getLocalTime(&timeinfo);
         strftime(message.text_content.text, 128, "%A, %B %d %Y\n%H:%M:%S",
                  &timeinfo);
-        if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
+        if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
-              "sending clock render_message to render_response_queue");
+              "sending clock render_message to render_queue");
         }
       }
     }
@@ -348,10 +348,10 @@ void music_provider_task(void *params) {
   last_wake_time = xTaskGetTickCount();
   while (1) {
     vTaskDelayUntil(&last_wake_time, REFRESH_RATE);
-    RenderRequest request;
-    if (xQueuePeek(render_request_queue, &request, TEN_MILLIS)) {
+    ProviderRequest request;
+    if (xQueuePeek(provider_queue, &request, TEN_MILLIS)) {
       if (request.sign_mode == SIGN_MODE_MUSIC) {
-        xQueueReceive(render_request_queue, &request, TEN_MILLIS);
+        xQueueReceive(provider_queue, &request, TEN_MILLIS);
         RenderMessage message;
         message.type = RENDER_TYPE_MUSIC;
         CurrentlyPlaying currently_playing;
@@ -361,9 +361,9 @@ void music_provider_task(void *params) {
         if (status == SPOTIFY_RESPONSE_OK) {
           message.music_content.data = currently_playing;
         }
-        if (xQueueSend(render_response_queue, &message, TEN_MILLIS)) {
+        if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println(
-              "sending music render_message to render_response_queue");
+              "sending music render_message to render_queue");
         }
       }
     }
@@ -372,24 +372,24 @@ void music_provider_task(void *params) {
 
 void mbta_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
-  RenderRequest request{SIGN_MODE_MBTA};
-  if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
+  ProviderRequest request{SIGN_MODE_MBTA};
+  if (xQueueSend(provider_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending mbta render_request to render_request_queue");
   }
 }
 
 void clock_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
-  RenderRequest request{SIGN_MODE_CLOCK};
-  if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
+  ProviderRequest request{SIGN_MODE_CLOCK};
+  if (xQueueSend(provider_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending clock render_request to render_request_queue");
   }
 }
 
 void music_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
-  RenderRequest request{SIGN_MODE_MUSIC};
-  if (xQueueSend(render_request_queue, (void *)&request, TEN_MILLIS)) {
+  ProviderRequest request{SIGN_MODE_MUSIC};
+  if (xQueueSend(provider_queue, (void *)&request, TEN_MILLIS)) {
     Serial.println("sending music render_request to render_request_queue");
   }
 }
@@ -439,7 +439,7 @@ void start_sign(SignMode current_sign_mode) {
     message.mbta_content.status = PREDICTION_STATUS_OK;
     mbta.get_placeholder_predictions(
         (Prediction *)&message.mbta_content.predictions);
-    xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+    xQueueSend(render_queue, (void *)&message, TEN_MILLIS);
     // jumpstart timer
     mbta_provider_timer(NULL);
   } else if (current_sign_mode == SIGN_MODE_CLOCK) {
@@ -451,7 +451,7 @@ void start_sign(SignMode current_sign_mode) {
     RenderMessage message;
     message.type = RENDER_TYPE_MUSIC;
     sprintf(message.text_content.text, "Nothing is playing");
-    xQueueSend(render_response_queue, (void *)&message, TEN_MILLIS);
+    xQueueSend(render_queue, (void *)&message, TEN_MILLIS);
     if (xTimerReset(music_provider_timer_handle, TEN_MILLIS)) {
       Serial.println("starting music provider timer");
     }

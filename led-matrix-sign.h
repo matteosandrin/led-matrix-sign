@@ -7,9 +7,13 @@
 #ifndef LED_MATRIX_SIGN_H
 #define LED_MATRIX_SIGN_H
 
+struct ProviderRequest {
+  SignMode sign_mode;
+};
+
 QueueHandle_t ui_queue;
-QueueHandle_t render_request_queue;
-QueueHandle_t render_response_queue;
+QueueHandle_t provider_queue;
+QueueHandle_t render_queue;
 
 TaskHandle_t system_task_handle;
 TaskHandle_t render_task_handle;

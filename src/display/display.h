@@ -35,10 +35,6 @@ struct RenderMessage {
   MusicRenderContent music_content;
 };
 
-struct RenderRequest {
-  SignMode sign_mode;
-};
-
 class Display {
   MatrixPanel_I2S_DMA *dma_display;
   // Using a GFXcanvas reduces the flicker when redrawing the screen, but uses a
