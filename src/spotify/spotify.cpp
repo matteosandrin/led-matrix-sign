@@ -25,9 +25,20 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   }
   serializeJsonPretty(*this->data, Serial);
   JsonObject currently_playing = (*this->data)["item"];
-  String artist = currently_playing["artists"][0]["name"];
+  JsonArray artists = currently_playing["artists"];
+  char artist[128] = "";
+  if (artists.size() > 1) {
+    for (JsonObject a : artists) {
+      strncat(artist, a["name"], 128-strlen(artist));
+      if (a != artists[artists.size()-1]) {
+        strncat(artist, ", ", 128-strlen(artist));
+      }
+    }
+  } else {
+    strncpy(artist, artists[0]["name"], 128);
+  }
   String name = currently_playing["name"];
-  artist.toCharArray(dst->artist, 128);
+  strncpy(dst->artist, artist, 128);
   name.toCharArray(dst->title, 128);
   dst->duration_ms = currently_playing["duration_ms"];
   dst->progress_ms = (*this->data)["progress_ms"];
