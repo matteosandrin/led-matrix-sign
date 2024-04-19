@@ -15,8 +15,8 @@ enum SpotifyResponse {
 };
 
 struct CurrentlyPlaying {
-  char title[64];
-  char artist[64];
+  char title[128];
+  char artist[128];
   int32_t duration_ms;
   int32_t progress_ms;
 };
@@ -29,13 +29,14 @@ class Spotify : lms::Client {
   void check_refresh_token();
   void get_refresh_bearer_token(char *dst);
   void get_api_bearer_token(char *dst);
-  void update_current_song(CurrentlyPlaying *src);
 
  public:
+  CurrentlyPlaying current_song;
   void setup();
   SpotifyResponse refresh_token();
   SpotifyResponse get_currently_playing(CurrentlyPlaying *dst);
-  CurrentlyPlaying current_song;
+  void update_current_song(CurrentlyPlaying *src);
+  void clear_current_song();
 };
 
 #endif /* SPOTIFY_H */

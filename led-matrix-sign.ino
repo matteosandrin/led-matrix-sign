@@ -13,6 +13,8 @@
 #include <time.h>
 
 #include "led-matrix-sign.h"
+#include "src/display/animation.h"
+#include "src/display/common.h"
 #include "src/display/display.h"
 #include "src/mbta/mbta.h"
 #include "src/server/server.h"
@@ -35,6 +37,7 @@ Display display;
 Button2 button;
 Spotify spotify;
 MBTA mbta;
+Animations animations;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -90,6 +93,7 @@ void setup() {
   while (!Serial) continue;
   setup_wifi();
   display.setup();
+  animations.setup(display.get_canvas());
 
   display.log("Sync with NTP server");
   setup_time();
@@ -148,6 +152,12 @@ void setup() {
                    true,        // is an autoreload timer (repeats periodically)
                    NULL, [](TimerHandle_t t) { button.loop(); });
   xTimerStart(button_loop_timer_handle, TEN_MILLIS);
+  animation_timer_handle =
+      xTimerCreate("animation_timer",
+                   100 / portTICK_PERIOD_MS,  // timer interval in millisec
+                   true,  // is an autoreload timer (repeats periodically)
+                   NULL, animation_timer);
+  xTimerStart(animation_timer_handle, TEN_MILLIS);
 
   // Task setup
   //
@@ -259,6 +269,8 @@ void render_task(void *params) {
         display.render_text_content(message.content.text);
       } else if (message.type == RENDER_TYPE_MUSIC) {
         display.render_music_content(message.content.music);
+      } else if (message.type == RENDER_TYPE_ANIMATION) {
+        display.render_animation_content(message.content.animation);
       }
     }
   }
@@ -278,8 +290,7 @@ void test_provider_task(void *params) {
         message.type = RENDER_TYPE_TEXT;
         strcpy(message.content.text.text, test_text);
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
-          Serial.println(
-              "sending test render_message to render_queue");
+          Serial.println("sending test render_message to render_queue");
         }
       }
     }
@@ -309,8 +320,7 @@ void mbta_provider_task(void *params) {
           message.content.mbta.predictions[1] = predictions[1];
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
-          Serial.println(
-              "sending mbta render_message to render_queue");
+          Serial.println("sending mbta render_message to render_queue");
           print_ram_info();
         }
       }
@@ -335,8 +345,7 @@ void clock_provider_task(void *params) {
         strftime(message.content.text.text, 128, "%A, %B %d %Y\n%H:%M:%S",
                  &timeinfo);
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
-          Serial.println(
-              "sending clock render_message to render_queue");
+          Serial.println("sending clock render_message to render_queue");
         }
       }
     }
@@ -359,11 +368,22 @@ void music_provider_task(void *params) {
             spotify.get_currently_playing(&currently_playing);
         message.content.music.status = status;
         if (status == SPOTIFY_RESPONSE_OK) {
+          if (strcmp(currently_playing.artist, spotify.current_song.artist) !=
+                  0 ||
+              strcmp(currently_playing.title, spotify.current_song.title) !=
+                  0) {
+            Serial.println("new song is playing");
+            animations.stop_music_animations();
+            animations.start_music_animations(currently_playing);
+            spotify.update_current_song(&currently_playing);
+          }
           message.content.music.data = currently_playing;
+        } else {
+          animations.stop_music_animations();
+          spotify.clear_current_song();
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
-          Serial.println(
-              "sending music render_message to render_queue");
+          Serial.println("sending music render_message to render_queue");
         }
       }
     }
@@ -374,7 +394,7 @@ void mbta_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
   ProviderRequest request{SIGN_MODE_MBTA};
   if (xQueueSend(provider_queue, (void *)&request, TEN_MILLIS)) {
-    Serial.println("sending mbta render_request to render_request_queue");
+    Serial.println("sending mbta provider_request to provider_queue");
   }
 }
 
@@ -382,7 +402,7 @@ void clock_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
   ProviderRequest request{SIGN_MODE_CLOCK};
   if (xQueueSend(provider_queue, (void *)&request, TEN_MILLIS)) {
-    Serial.println("sending clock render_request to render_request_queue");
+    Serial.println("sending clock provider_request to provider_queue");
   }
 }
 
@@ -390,9 +410,11 @@ void music_provider_timer(TimerHandle_t timer) {
   // Request new render messages from the appropriate provider
   ProviderRequest request{SIGN_MODE_MUSIC};
   if (xQueueSend(provider_queue, (void *)&request, TEN_MILLIS)) {
-    Serial.println("sending music render_request to render_request_queue");
+    Serial.println("sending music provider_request to provider_queue");
   }
 }
+
+void animation_timer(TimerHandle_t timer) { animations.draw(render_queue); }
 
 void button_tapped(Button2 &btn) {
   Serial.println("button_tapped function");

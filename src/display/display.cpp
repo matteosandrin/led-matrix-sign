@@ -37,6 +37,16 @@ void Display::log(char *message) {
   this->dma_display->setTextWrap(false);
 }
 
+GFXcanvas16 *Display::get_canvas() { return &this->canvas; }
+
+Rect Display::get_text_bbox(char *text, int16_t x, int16_t y) {
+  int16_t x0, y0;
+  uint16_t w0, h0;
+  Rect bbox;
+  this->canvas.getTextBounds(text, x, y, &bbox.x, &bbox.y, &bbox.w, &bbox.h);
+  return bbox;
+}
+
 // Calculate the cursor position that aligns the given string to the right edge
 // of the screen. If the cursor position is left of min_x, then min_x is
 // returned instead.
@@ -127,29 +137,61 @@ void Display::render_mbta_content(MBTARenderContent content) {
 
 void Display::render_music_content(MusicRenderContent content) {
   Serial.println("Rendering music content");
-  this->canvas.fillScreen(BLACK);
   this->canvas.setFont(NULL);
   this->canvas.setTextColor(SPOTIFY_GREEN);
   this->canvas.setTextWrap(false);
   this->canvas.setCursor(0, 0);
   if (content.status == SPOTIFY_RESPONSE_OK) {
     CurrentlyPlaying playing = content.data;
-    this->canvas.println(playing.title);
-    this->canvas.println(playing.artist);
+    // Rect bbox1 = {0, 0, SCREEN_WIDTH, 8};
+    // Rect bbox2 = {0, 8, SCREEN_WIDTH, 8};
+    // this->render_text_scrolling(playing.title, bbox1, 10, false);
+    // this->render_text_scrolling(playing.artist, bbox1, 10, false);
+    this->canvas.fillRect(0, SCREEN_HEIGHT - 2, SCREEN_WIDTH, 2, this->BLACK);
     // draw progress bar
     int progress_bar_width = SCREEN_WIDTH;
     double progress = (double)playing.progress_ms / (double)playing.duration_ms;
     int current_bar_width = progress_bar_width * progress;
-    this->canvas.drawRect(0, SCREEN_HEIGHT - 2, progress_bar_width, 2, WHITE);
+    this->canvas.drawRect(0, SCREEN_HEIGHT - 2, progress_bar_width, 2,
+                          this->WHITE);
     if (current_bar_width > 0) {
       this->canvas.drawRect(0, SCREEN_HEIGHT - 2, current_bar_width, 2,
                             SPOTIFY_GREEN);
     }
   } else if (content.status == SPOTIFY_RESPONSE_EMPTY) {
+    this->canvas.fillScreen(this->BLACK);
     this->canvas.print("Nothing is playing");
   } else {
+    this->canvas.fillScreen(this->BLACK);
     this->canvas.print("Error querying the spotify API");
   }
   this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
                                    this->canvas.width(), this->canvas.height());
+}
+
+void Display::render_animation_content(AnimationRenderContent content) {
+  if (content.type == ANIMATION_TYPE_TEXT_SCROLL) {
+    this->render_text_scrolling(content.content.text_scroll.text, content.bbox,
+                                content.speed, true);
+  }
+}
+
+void Display::render_text_scrolling(char *text, Rect bbox, int16_t speed,
+                                    bool draw) {
+  int16_t x0, y0;
+  uint16_t w0, h0;
+  this->canvas.getTextBounds(text, bbox.x, bbox.y, &x0, &y0, &w0, &h0);
+  int wrap_width = max(bbox.w, w0) + 8;
+  int shift_x = (int)(round(speed * xTaskGetTickCount() / 1000)) % wrap_width;
+  int new_x = bbox.x + shift_x;
+  this->canvas.fillRect(bbox.x, bbox.y, bbox.w, bbox.h, this->BLACK);
+  this->canvas.setCursor(new_x, bbox.y);
+  this->canvas.print(text);
+  this->canvas.setCursor(-wrap_width + new_x, bbox.y);
+  this->canvas.print(text);
+  if (draw) {
+    this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
+                                     this->canvas.width(),
+                                     this->canvas.height());
+  }
 }

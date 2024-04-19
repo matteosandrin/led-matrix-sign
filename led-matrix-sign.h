@@ -27,6 +27,7 @@ TimerHandle_t clock_provider_timer_handle;
 TimerHandle_t music_provider_timer_handle;
 TimerHandle_t wifi_reconnect_timer_handle;
 TimerHandle_t button_loop_timer_handle;
+TimerHandle_t animation_timer_handle;
 
 void system_task(void *params);
 void render_task(void *params);

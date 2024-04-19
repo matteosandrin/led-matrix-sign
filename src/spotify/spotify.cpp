@@ -27,11 +27,10 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   JsonObject currently_playing = (*this->data)["item"];
   String artist = currently_playing["artists"][0]["name"];
   String name = currently_playing["name"];
-  artist.toCharArray(dst->artist, 64);
-  name.toCharArray(dst->title, 64);
+  artist.toCharArray(dst->artist, 128);
+  name.toCharArray(dst->title, 128);
   dst->duration_ms = currently_playing["duration_ms"];
   dst->progress_ms = (*this->data)["progress_ms"];
-  this->update_current_song(dst);
   return SPOTIFY_RESPONSE_OK;
 }
 
@@ -75,8 +74,7 @@ SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
             Serial.println(error.f_str());
             return SPOTIFY_RESPONSE_ERROR;
           }
-          String access_code_str =
-              (*this->data)["access_token"];
+          String access_code_str = (*this->data)["access_token"];
           access_code_str.toCharArray(dst, 256);
           return SPOTIFY_RESPONSE_OK;
         }
@@ -138,8 +136,13 @@ void Spotify::check_refresh_token() {
 }
 
 void Spotify::update_current_song(CurrentlyPlaying *src) {
-  strncpy(this->current_song.title, src->title, 64);
-  strncpy(this->current_song.artist, src->artist, 64);
+  strncpy(this->current_song.title, src->title, 128);
+  strncpy(this->current_song.artist, src->artist, 128);
   this->current_song.duration_ms = src->duration_ms;
   this->current_song.progress_ms = src->progress_ms;
+}
+
+void Spotify::clear_current_song() {
+  CurrentlyPlaying empty;
+  this->update_current_song(&empty);
 }
