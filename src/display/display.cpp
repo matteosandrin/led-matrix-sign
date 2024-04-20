@@ -44,6 +44,11 @@ void Display::log(char *message) {
 
 GFXcanvas16 *Display::get_canvas() { return &this->canvas; }
 
+void Display::render_canvas_to_display() {
+  this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
+                                   this->canvas.width(), this->canvas.height());
+}
+
 Rect Display::get_text_bbox(char *text, int16_t x, int16_t y) {
   int16_t x0, y0;
   uint16_t w0, h0;
@@ -169,9 +174,8 @@ void Display::render_music_content(MusicRenderContent content) {
     this->canvas.drawRGBBitmap(0, 0, this->image_canvas.getBuffer(),
                                this->image_canvas.width(),
                                this->image_canvas.height());
-    this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
-                                     this->canvas.width(),
-                                     this->canvas.height());
+
+    this->render_canvas_to_display();
   } else if (content.status == SPOTIFY_RESPONSE_EMPTY) {
     this->dma_display->fillScreen(this->BLACK);
     this->dma_display->print("Nothing is playing");
@@ -183,7 +187,7 @@ void Display::render_music_content(MusicRenderContent content) {
 
 void Display::render_animation_content(AnimationRenderContent content) {
   if (content.type == ANIMATION_TYPE_TEXT_SCROLL) {
-    this->render_text_scrolling(content, true);
+    this->render_text_scrolling(content, false);
   }
 }
 
@@ -212,12 +216,10 @@ void Display::render_text_scrolling(AnimationRenderContent content, bool draw) {
   this->scratch_canvas.print(text);
   this->scratch_canvas.setCursor(-wrap_width + new_x, bbox.y);
   this->scratch_canvas.print(text);
+  this->canvas.drawRGBBitmap(0, 0, this->scratch_canvas.getBuffer(),
+                             mask.getBuffer(), this->scratch_canvas.width(),
+                             this->scratch_canvas.height());
   if (draw) {
-    this->canvas.drawRGBBitmap(0, 0, this->scratch_canvas.getBuffer(),
-                               mask.getBuffer(), this->scratch_canvas.width(),
-                               this->scratch_canvas.height());
-    this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
-                                     this->canvas.width(),
-                                     this->canvas.height());
+    this->render_canvas_to_display();
   }
 }

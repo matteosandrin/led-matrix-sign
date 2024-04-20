@@ -289,6 +289,8 @@ void render_task(void *params) {
         display.render_music_content(message.content.music);
       } else if (message.type == RENDER_TYPE_ANIMATION) {
         display.render_animation_content(message.content.animation);
+      } else if (message.type == RENDER_TYPE_CANVAS_TO_DISPLAY) {
+        display.render_canvas_to_display();
       }
     }
   }

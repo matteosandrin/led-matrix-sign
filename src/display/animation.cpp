@@ -55,4 +55,7 @@ void Animations::draw(QueueHandle_t render_queue) {
     message.content.animation = a;
     xQueueSend(render_queue, (void *)&message, TEN_MILLIS);
   }
+  RenderMessage message;
+  message.type = RENDER_TYPE_CANVAS_TO_DISPLAY;
+  xQueueSend(render_queue, (void *)&message, TEN_MILLIS);
 }

@@ -28,6 +28,7 @@ class Display {
   void log(char *message);
   GFXcanvas16 *get_canvas();
   Rect get_text_bbox(char *text, int16_t x, int16_t y);
+  void render_canvas_to_display();
   void render_text_content(TextRenderContent content);
   void render_mbta_content(MBTARenderContent content);
   void render_music_content(MusicRenderContent content);
