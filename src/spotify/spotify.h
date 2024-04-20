@@ -37,6 +37,7 @@ class Spotify : lms::Client {
   SpotifyResponse get_currently_playing(CurrentlyPlaying *dst);
   void update_current_song(CurrentlyPlaying *src);
   void clear_current_song();
+  bool is_current_song_new(const CurrentlyPlaying *cmp);
 };
 
 #endif /* SPOTIFY_H */

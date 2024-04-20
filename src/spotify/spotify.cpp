@@ -29,9 +29,9 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   char artist[128] = "";
   if (artists.size() > 1) {
     for (JsonObject a : artists) {
-      strncat(artist, a["name"], 128-strlen(artist));
-      if (a != artists[artists.size()-1]) {
-        strncat(artist, ", ", 128-strlen(artist));
+      strncat(artist, a["name"], 128 - strlen(artist));
+      if (a != artists[artists.size() - 1]) {
+        strncat(artist, ", ", 128 - strlen(artist));
       }
     }
   } else {
@@ -156,4 +156,9 @@ void Spotify::update_current_song(CurrentlyPlaying *src) {
 void Spotify::clear_current_song() {
   CurrentlyPlaying empty;
   this->update_current_song(&empty);
+}
+
+bool Spotify::is_current_song_new(const CurrentlyPlaying *cmp) {
+  return strcmp(cmp->artist, this->current_song.artist) != 0 ||
+         strcmp(cmp->title, this->current_song.title) != 0;
 }

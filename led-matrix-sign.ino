@@ -368,11 +368,8 @@ void music_provider_task(void *params) {
             spotify.get_currently_playing(&currently_playing);
         message.content.music.status = status;
         if (status == SPOTIFY_RESPONSE_OK) {
-          if (strcmp(currently_playing.artist, spotify.current_song.artist) !=
-                  0 ||
-              strcmp(currently_playing.title, spotify.current_song.title) !=
-                  0) {
-            Serial.println("new song is playing");
+          if (spotify.is_current_song_new(&currently_playing)) {
+            // new song is playing. Update animations to show new info
             animations.stop_music_animations();
             animations.start_music_animations(currently_playing);
             spotify.update_current_song(&currently_playing);

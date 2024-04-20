@@ -143,10 +143,6 @@ void Display::render_music_content(MusicRenderContent content) {
   this->canvas.setCursor(0, 0);
   if (content.status == SPOTIFY_RESPONSE_OK) {
     CurrentlyPlaying playing = content.data;
-    // Rect bbox1 = {0, 0, SCREEN_WIDTH, 8};
-    // Rect bbox2 = {0, 8, SCREEN_WIDTH, 8};
-    // this->render_text_scrolling(playing.title, bbox1, 10, false);
-    // this->render_text_scrolling(playing.artist, bbox1, 10, false);
     this->canvas.fillRect(0, SCREEN_HEIGHT - 2, SCREEN_WIDTH, 2, this->BLACK);
     // draw progress bar
     int progress_bar_width = SCREEN_WIDTH;
