@@ -150,7 +150,8 @@ void Display::render_music_content(MusicRenderContent content) {
   this->dma_display->setTextColor(SPOTIFY_GREEN);
   this->dma_display->setTextWrap(false);
   this->dma_display->setCursor(0, 0);
-  if (content.status == SPOTIFY_RESPONSE_OK) {
+  if (content.status == SPOTIFY_RESPONSE_OK ||
+      content.status == SPOTIFY_RESPONSE_OK_SHOW_CACHED) {
     CurrentlyPlaying playing = content.data;
     int progress_bar_width = SCREEN_WIDTH - 32;
     this->canvas.fillRect(32, SCREEN_HEIGHT - 2, progress_bar_width, 2,

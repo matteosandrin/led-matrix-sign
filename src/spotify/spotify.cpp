@@ -17,10 +17,14 @@ void Spotify::setup() {
   this->wifi_client->setCACert(spotify_certificate);
   this->refresh_token();
   this->album_cover_jpg = new uint8_t[ALBUM_COVER_IMG_BUF_SIZE];
+  this->clear_current_song();
 }
 
 SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   SpotifyResponse status = this->fetch_currently_playing(data);
+  if (status == SPOTIFY_RESPONSE_EMPTY && this->current_song.timestamp > 0) {
+    return SPOTIFY_RESPONSE_OK_SHOW_CACHED;
+  }
   if (status != SPOTIFY_RESPONSE_OK) {
     return status;
   }
@@ -223,8 +227,7 @@ void Spotify::update_current_song(CurrentlyPlaying *src) {
 }
 
 void Spotify::clear_current_song() {
-  CurrentlyPlaying empty;
-  this->update_current_song(&empty);
+  memset(&this->current_song, 0, sizeof(this->current_song));
 }
 
 bool Spotify::is_current_song_new(const CurrentlyPlaying *cmp) {

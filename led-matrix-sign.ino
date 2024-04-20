@@ -400,6 +400,10 @@ void music_provider_task(void *params) {
             }
           }
           message.content.music.data = currently_playing;
+        } else if (status == SPOTIFY_RESPONSE_OK_SHOW_CACHED) {
+          // If nothing is playing but we still have the last song in memory,
+          // let's keep showing that song
+          message.content.music.data = spotify.current_song;
         } else {
           display.animations.stop_music_animations();
           spotify.clear_current_song();
