@@ -1,6 +1,7 @@
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
 #include "../../common.h"
+#include "animation.h"
 #include "common.h"
 
 #ifndef RENDER_H
@@ -12,12 +13,16 @@ class Display {
   // lot of memory. (160 * 32 * 2 = 10240 bytes)
   // https://learn.adafruit.com/adafruit-gfx-graphics-library/minimizing-redraw-flicker
   GFXcanvas16 canvas;
+  GFXcanvas16 scratch_canvas;
+  GFXcanvas1 mask;
 
   int justify_right(char *str, int char_width, int min_x);
   int justify_center(char *str, int char_width);
   void render_text_scrolling(char *text, Rect bbox, int16_t speed, bool draw);
 
  public:
+  Animations animations;
+  GFXcanvas16 image_canvas;
   Display();
   void setup();
   void log(char *message);

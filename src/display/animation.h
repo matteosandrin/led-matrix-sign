@@ -8,6 +8,9 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
+#define ANIMATION_FONT_HEIGHT 8
+#define ANIMATION_IMAGE_WIDTH 32
+
 class Animations {
   std::map<AnimationId, Animation> animations;
   GFXcanvas16 *canvas;

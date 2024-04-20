@@ -43,5 +43,7 @@ void check_wifi_and_reconnect_timer(TimerHandle_t timer);
 SignMode shift_sign_mode(SignMode current_sign_mode);
 SignMode read_sign_mode();
 int write_sign_mode(SignMode sign_mode);
+bool draw_jpg_image(int16_t x, int16_t y, uint16_t w, uint16_t h,
+                    uint16_t *data);
 
 #endif /* LED_MATRIX_SIGN_H */

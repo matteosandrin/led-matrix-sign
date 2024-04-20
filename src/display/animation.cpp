@@ -2,13 +2,14 @@
 
 #include "../../common.h"
 
-void Animations::setup(GFXcanvas16 *canvas) { this->canvas = canvas; }
+void Animations::setup(GFXcanvas16 *canvas) {
+  this->canvas = canvas;
+}
 
 void Animations::start_music_animations(CurrentlyPlaying song) {
-  this->start_music_animation(ANIMATION_ID_MUSIC_TITLE, song.title,
-                              SCREEN_WIDTH);
-  this->start_music_animation(ANIMATION_ID_MUSIC_ARTIST, song.artist,
-                              SCREEN_WIDTH);
+  int bbox_w = SCREEN_WIDTH - ANIMATION_IMAGE_WIDTH - 2;
+  this->start_music_animation(ANIMATION_ID_MUSIC_TITLE, song.title, bbox_w);
+  this->start_music_animation(ANIMATION_ID_MUSIC_ARTIST, song.artist, bbox_w);
 }
 
 void Animations::start_music_animation(AnimationId id, char *text,
@@ -25,10 +26,12 @@ void Animations::start_music_animation(AnimationId id, char *text,
   }
   animation.type = ANIMATION_TYPE_TEXT_SCROLL;
   if (id == ANIMATION_ID_MUSIC_TITLE) {
-    animation.bbox = {0, 0, bbox_width, 8};
+    animation.bbox = {ANIMATION_IMAGE_WIDTH + 1, 1, bbox_width,
+                      ANIMATION_FONT_HEIGHT};
   }
   if (id == ANIMATION_ID_MUSIC_ARTIST) {
-    animation.bbox = {0, 8, bbox_width, 8};
+    animation.bbox = {ANIMATION_IMAGE_WIDTH + 1, ANIMATION_FONT_HEIGHT + 1,
+                      bbox_width, ANIMATION_FONT_HEIGHT};
   }
   animation.id = id;
   strncpy(animation.content.text_scroll.text, text, 128);

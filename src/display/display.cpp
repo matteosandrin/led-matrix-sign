@@ -3,7 +3,11 @@
 #include "../fonts/MBTASans.h"
 #include "display-pins.h"
 
-Display::Display() : canvas(SCREEN_WIDTH, SCREEN_HEIGHT) {
+Display::Display()
+    : canvas(SCREEN_WIDTH, SCREEN_HEIGHT),
+      scratch_canvas(SCREEN_WIDTH, SCREEN_HEIGHT),
+      mask(SCREEN_WIDTH, SCREEN_HEIGHT),
+      image_canvas(32, 32) {
   this->AMBER = dma_display->color565(255, 191, 0);
   this->WHITE = dma_display->color565(255, 255, 255);
   this->BLACK = dma_display->color565(0, 0, 0);
@@ -27,6 +31,7 @@ void Display::setup() {
   this->dma_display->begin();
   this->dma_display->setBrightness8(90);  // 0-255
   this->dma_display->clearScreen();
+  this->animations.setup(&this->canvas);
 }
 
 void Display::log(char *message) {
@@ -141,28 +146,38 @@ void Display::render_music_content(MusicRenderContent content) {
   this->canvas.setTextColor(SPOTIFY_GREEN);
   this->canvas.setTextWrap(false);
   this->canvas.setCursor(0, 0);
+  this->dma_display->setFont(NULL);
+  this->dma_display->setTextColor(SPOTIFY_GREEN);
+  this->dma_display->setTextWrap(false);
+  this->dma_display->setCursor(0, 0);
   if (content.status == SPOTIFY_RESPONSE_OK) {
     CurrentlyPlaying playing = content.data;
-    this->canvas.fillRect(0, SCREEN_HEIGHT - 2, SCREEN_WIDTH, 2, this->BLACK);
+    int progress_bar_width = SCREEN_WIDTH - 32;
+    this->canvas.fillRect(32, SCREEN_HEIGHT - 2, progress_bar_width, 2,
+                          this->BLACK);
     // draw progress bar
-    int progress_bar_width = SCREEN_WIDTH;
     double progress = (double)playing.progress_ms / (double)playing.duration_ms;
     int current_bar_width = progress_bar_width * progress;
-    this->canvas.drawRect(0, SCREEN_HEIGHT - 2, progress_bar_width, 2,
+    this->canvas.drawRect(32, SCREEN_HEIGHT - 2, progress_bar_width, 2,
                           this->WHITE);
     if (current_bar_width > 0) {
-      this->canvas.drawRect(0, SCREEN_HEIGHT - 2, current_bar_width, 2,
+      this->canvas.drawRect(32, SCREEN_HEIGHT - 2, current_bar_width, 2,
                             SPOTIFY_GREEN);
     }
+    // draw image
+    this->canvas.drawRGBBitmap(0, 0, this->image_canvas.getBuffer(),
+                               this->image_canvas.width(),
+                               this->image_canvas.height());
+    this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
+                                     this->canvas.width(),
+                                     this->canvas.height());
   } else if (content.status == SPOTIFY_RESPONSE_EMPTY) {
-    this->canvas.fillScreen(this->BLACK);
-    this->canvas.print("Nothing is playing");
+    this->dma_display->fillScreen(this->BLACK);
+    this->dma_display->print("Nothing is playing");
   } else {
-    this->canvas.fillScreen(this->BLACK);
-    this->canvas.print("Error querying the spotify API");
+    this->dma_display->fillScreen(this->BLACK);
+    this->dma_display->print("Error querying the spotify API");
   }
-  this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
-                                   this->canvas.width(), this->canvas.height());
 }
 
 void Display::render_animation_content(AnimationRenderContent content) {
@@ -176,16 +191,25 @@ void Display::render_text_scrolling(char *text, Rect bbox, int16_t speed,
                                     bool draw) {
   int16_t x0, y0;
   uint16_t w0, h0;
-  this->canvas.getTextBounds(text, bbox.x, bbox.y, &x0, &y0, &w0, &h0);
+  this->mask.fillScreen(this->BLACK);
+  this->mask.fillRect(bbox.x, bbox.y, bbox.w, bbox.h, this->WHITE);
+  this->scratch_canvas.setFont(NULL);
+  this->scratch_canvas.setTextColor(this->SPOTIFY_GREEN);
+  this->scratch_canvas.fillScreen(this->BLACK);
+  this->scratch_canvas.setTextWrap(false);
+  this->scratch_canvas.setCursor(0, 0);
+  this->scratch_canvas.getTextBounds(text, bbox.x, bbox.y, &x0, &y0, &w0, &h0);
   int wrap_width = max(bbox.w, w0) + 8;
   int shift_x = (int)(round(speed * xTaskGetTickCount() / 1000)) % wrap_width;
   int new_x = bbox.x + shift_x;
-  this->canvas.fillRect(bbox.x, bbox.y, bbox.w, bbox.h, this->BLACK);
-  this->canvas.setCursor(new_x, bbox.y);
-  this->canvas.print(text);
-  this->canvas.setCursor(-wrap_width + new_x, bbox.y);
-  this->canvas.print(text);
+  this->scratch_canvas.setCursor(new_x, bbox.y);
+  this->scratch_canvas.print(text);
+  this->scratch_canvas.setCursor(-wrap_width + new_x, bbox.y);
+  this->scratch_canvas.print(text);
   if (draw) {
+    this->canvas.drawRGBBitmap(0, 0, this->scratch_canvas.getBuffer(),
+                               mask.getBuffer(), this->scratch_canvas.width(),
+                               this->scratch_canvas.height());
     this->dma_display->drawRGBBitmap(0, 0, this->canvas.getBuffer(),
                                      this->canvas.width(),
                                      this->canvas.height());

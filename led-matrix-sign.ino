@@ -4,6 +4,7 @@
 #include <ESP.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
+#include <TJpg_Decoder.h>
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -37,7 +38,6 @@ Display display;
 Button2 button;
 Spotify spotify;
 MBTA mbta;
-Animations animations;
 
 void setup_wifi() {
   WiFi.mode(WIFI_STA);
@@ -93,16 +93,15 @@ void setup() {
   while (!Serial) continue;
   setup_wifi();
   display.setup();
-  animations.setup(display.get_canvas());
 
   display.log("Sync with NTP server");
   setup_time();
 
   // Preferences setup
   preferences.begin("default");
+  SignMode sign_mode = read_sign_mode();
 
   // API setup
-  SignMode sign_mode = read_sign_mode();
   if (sign_mode == SIGN_MODE_MBTA) {
     display.log("Setup MBTA API");
     mbta.setup();
@@ -117,6 +116,11 @@ void setup() {
   button.begin(SIGN_MODE_BUTTON_PIN);
   button.setTapHandler(button_tapped);
 
+  // jpeg setup
+  TJpgDec.setJpgScale(2);
+  TJpgDec.setSwapBytes(false);
+  TJpgDec.setCallback(draw_jpg_image);
+
   // Queue setup
   display.log("Setup RTOS queues");
   ui_queue = xQueueCreate(16, sizeof(UIMessage));
@@ -125,21 +129,27 @@ void setup() {
 
   // Timer setup
   display.log("Setup RTOS timers");
-  mbta_provider_timer_handle =
-      xTimerCreate("mbta_provider_timer",
-                   5000 / portTICK_PERIOD_MS,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
-                   NULL, mbta_provider_timer);
-  clock_provider_timer_handle =
-      xTimerCreate("clock_provider_timer",
-                   REFRESH_RATE,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
-                   NULL, clock_provider_timer);
-  music_provider_timer_handle =
-      xTimerCreate("music_provider_timer",
-                   1000 / portTICK_PERIOD_MS,  // timer interval in millisec
-                   true,  // is an autoreload timer (repeats periodically)
-                   NULL, music_provider_timer);
+  if (sign_mode == SIGN_MODE_MBTA) {
+    mbta_provider_timer_handle =
+        xTimerCreate("mbta_provider_timer",
+                     5000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                     true,  // is an autoreload timer (repeats periodically)
+                     NULL, mbta_provider_timer);
+  }
+  if (sign_mode == SIGN_MODE_CLOCK) {
+    clock_provider_timer_handle =
+        xTimerCreate("clock_provider_timer",
+                     REFRESH_RATE,  // timer interval in millisec
+                     true,  // is an autoreload timer (repeats periodically)
+                     NULL, clock_provider_timer);
+  }
+  if (sign_mode == SIGN_MODE_MUSIC) {
+    music_provider_timer_handle =
+        xTimerCreate("music_provider_timer",
+                     1000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                     true,  // is an autoreload timer (repeats periodically)
+                     NULL, music_provider_timer);
+  }
   wifi_reconnect_timer_handle =
       xTimerCreate("wifi_reconnect_timer",
                    30000 / portTICK_PERIOD_MS,  // timer interval in millisec
@@ -177,30 +187,38 @@ void setup() {
                           3,     // task priority
                           &system_task_handle, ESP32_CORE_0);
   xTaskCreatePinnedToCore(render_task, "render_task",
-                          4096,  // stack size
+                          8192,  // stack size
                           NULL,  // task parameters
                           2,     // task priority
                           &render_task_handle, ESP32_CORE_1);
-  xTaskCreatePinnedToCore(mbta_provider_task, "mbta_provider_task",
-                          8192,  // stack size
-                          NULL,  // task parameters
-                          1,     // task priority
-                          &mbta_provider_task_handle, ESP32_CORE_0);
-  xTaskCreatePinnedToCore(test_provider_task, "test_provider_task",
-                          2048,  // stack size
-                          NULL,  // task parameters
-                          1,     // task priority
-                          &test_provider_task_handle, ESP32_CORE_0);
-  xTaskCreatePinnedToCore(clock_provider_task, "clock_provider_task",
-                          2048,  // stack size
-                          NULL,  // task parameters
-                          1,     // task priority
-                          &clock_provider_task_handle, ESP32_CORE_0);
-  xTaskCreatePinnedToCore(music_provider_task, "music_provider_task",
-                          8192,  // stack size
-                          NULL,  // task parameters
-                          1,     // task priority
-                          &music_provider_task_handle, ESP32_CORE_0);
+  if (sign_mode == SIGN_MODE_MBTA) {
+    xTaskCreatePinnedToCore(mbta_provider_task, "mbta_provider_task",
+                            8192,  // stack size
+                            NULL,  // task parameters
+                            1,     // task priority
+                            &mbta_provider_task_handle, ESP32_CORE_0);
+  }
+  if (sign_mode == SIGN_MODE_TEST) {
+    xTaskCreatePinnedToCore(test_provider_task, "test_provider_task",
+                            2048,  // stack size
+                            NULL,  // task parameters
+                            1,     // task priority
+                            &test_provider_task_handle, ESP32_CORE_0);
+  }
+  if (sign_mode == SIGN_MODE_CLOCK) {
+    xTaskCreatePinnedToCore(clock_provider_task, "clock_provider_task",
+                            2048,  // stack size
+                            NULL,  // task parameters
+                            1,     // task priority
+                            &clock_provider_task_handle, ESP32_CORE_0);
+  }
+  if (sign_mode == SIGN_MODE_MUSIC) {
+    xTaskCreatePinnedToCore(music_provider_task, "music_provider_task",
+                            8192,  // stack size
+                            NULL,  // task parameters
+                            1,     // task priority
+                            &music_provider_task_handle, ESP32_CORE_0);
+  }
 
   // Webserver setup
   // this needs to happen after the RTOS setup, so we can pass the queue handle
@@ -370,13 +388,20 @@ void music_provider_task(void *params) {
         if (status == SPOTIFY_RESPONSE_OK) {
           if (spotify.is_current_song_new(&currently_playing)) {
             // new song is playing. Update animations to show new info
-            animations.stop_music_animations();
-            animations.start_music_animations(currently_playing);
+            display.animations.stop_music_animations();
+            display.animations.start_music_animations(currently_playing);
             spotify.update_current_song(&currently_playing);
+            // fetch new album cover
+            Serial.println("fetch new album cover");
+            status = spotify.get_album_cover(&currently_playing);
+            if (status == SPOTIFY_RESPONSE_OK) {
+              TJpgDec.drawJpg(0, 0, spotify.album_cover_jpg,
+                              ALBUM_COVER_IMG_BUF_SIZE);
+            }
           }
           message.content.music.data = currently_playing;
         } else {
-          animations.stop_music_animations();
+          display.animations.stop_music_animations();
           spotify.clear_current_song();
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
@@ -411,7 +436,9 @@ void music_provider_timer(TimerHandle_t timer) {
   }
 }
 
-void animation_timer(TimerHandle_t timer) { animations.draw(render_queue); }
+void animation_timer(TimerHandle_t timer) {
+  display.animations.draw(render_queue);
+}
 
 void button_tapped(Button2 &btn) {
   Serial.println("button_tapped function");
@@ -475,4 +502,11 @@ void start_sign(SignMode current_sign_mode) {
       Serial.println("starting music provider timer");
     }
   }
+}
+
+bool draw_jpg_image(int16_t x, int16_t y, uint16_t w, uint16_t h,
+                    uint16_t *data) {
+  if (y >= SCREEN_HEIGHT) return 0;
+  display.image_canvas.drawRGBBitmap(x, y, data, w, h);
+  return 1;
 }

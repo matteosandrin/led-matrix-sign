@@ -16,6 +16,7 @@ void Spotify::setup() {
   lms::Client::setup(2048);
   this->wifi_client->setCACert(spotify_certificate);
   this->refresh_token();
+  this->album_cover_jpg = new uint8_t[ALBUM_COVER_IMG_BUF_SIZE];
 }
 
 SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
@@ -30,6 +31,7 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   name.toCharArray(dst->title, 128);
   dst->duration_ms = currently_playing["duration_ms"];
   dst->progress_ms = (*this->data)["progress_ms"];
+  this->format_album_cover(&dst->cover, this->data);
   return SPOTIFY_RESPONSE_OK;
 }
 
@@ -47,6 +49,23 @@ void Spotify::format_artists(char *dst, JsonDocument *data) {
     strncpy(artist, artists[0]["name"], 128);
   }
   strncpy(dst, artist, 128);
+}
+
+void Spotify::format_album_cover(AlbumCover *dst, JsonDocument *data) {
+  JsonArray imgs = (*data)["item"]["album"]["images"];
+  if (imgs.size() == 0) {
+    return;
+  }
+  JsonObject smallest_img = imgs[0];
+  for (JsonObject img : imgs) {
+    if (img["width"] < smallest_img["width"]) {
+      smallest_img = img;
+    }
+  }
+  String url = smallest_img["url"];
+  url.toCharArray(dst->url, 128);
+  dst->width = smallest_img["width"];
+  dst->height = smallest_img["height"];
 }
 
 void Spotify::get_refresh_bearer_token(char *dst) {
@@ -71,6 +90,7 @@ SpotifyResponse Spotify::refresh_token() {
 
 SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
   if (this->wifi_client) {
+    this->wifi_client->setCACert(spotify_certificate);
     HTTPClient https;
     if (https.begin(*this->wifi_client, SPOTIFY_REFRESH_TOKEN_URL)) {
       char bearer[256];
@@ -102,6 +122,7 @@ SpotifyResponse Spotify::fetch_refresh_token(char *dst) {
 SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
   this->check_refresh_token();
   if (this->wifi_client) {
+    this->wifi_client->setCACert(spotify_certificate);
     if (!this->http_client.connected()) {
       Serial.println("Starting new http connection to spotify api");
       char bearer[256];
@@ -124,6 +145,9 @@ SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
         filter["item"]["name"] = true;
         filter["item"]["duration_ms"] = true;
         filter["item"]["artists"][0]["name"] = true;
+        filter["item"]["album"]["images"][0]["url"] = true;
+        filter["item"]["album"]["images"][0]["width"] = true;
+        filter["item"]["album"]["images"][0]["height"] = true;
         filter["progress_ms"] = true;
         filter["timestamp"] = true;
         DeserializationError error =
@@ -137,6 +161,49 @@ SpotifyResponse Spotify::fetch_currently_playing(JsonDocument *dst) {
         return SPOTIFY_RESPONSE_OK;
       } else if (http_code == HTTP_CODE_NO_CONTENT) {
         return SPOTIFY_RESPONSE_EMPTY;
+      }
+    }
+  }
+  return SPOTIFY_RESPONSE_ERROR;
+}
+
+SpotifyResponse Spotify::get_album_cover(CurrentlyPlaying *src) {
+  return this->fetch_album_cover(src->cover.url, this->album_cover_jpg);
+}
+
+SpotifyResponse Spotify::fetch_album_cover(char *url, uint8_t *dst) {
+  memset(dst, 0, ALBUM_COVER_IMG_BUF_SIZE);
+  Serial.printf("url: %s\n", url);
+  Serial.printf("img: %d %d %d %d\n", dst[0], dst[1], dst[2], dst[3]);
+  if (this->wifi_client) {
+    this->wifi_client->setInsecure();
+    HTTPClient https;
+    if (https.begin(*this->wifi_client, url)) {
+      int http_code = https.GET();
+      Serial.printf("[HTTPS] GET... code: %d\n", http_code);
+      if (http_code > 0) {
+        if (http_code == HTTP_CODE_OK ||
+            http_code == HTTP_CODE_MOVED_PERMANENTLY) {
+          int size = https.getSize();
+          int i = 0;
+          uint8_t buff[128];
+          WiFiClient *stream = https.getStreamPtr();
+          while (https.connected() && (size > 0 || size == -1)) {
+            size_t stream_size = stream->available();
+            if (stream_size > 0) {
+              int c = stream->readBytes(
+                  buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+              memcpy(dst + i, buff, c);
+              if (size > 0) {
+                size -= c;
+                i += c;
+              }
+            }
+            delay(1);
+          }
+          Serial.printf("img: %d %d %d %d\n", dst[0], dst[1], dst[2], dst[3]);
+          return SPOTIFY_RESPONSE_OK;
+        }
       }
     }
   }
