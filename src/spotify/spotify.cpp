@@ -218,10 +218,7 @@ void Spotify::check_refresh_token() {
 }
 
 void Spotify::update_current_song(CurrentlyPlaying *src) {
-  strncpy(this->current_song.title, src->title, 128);
-  strncpy(this->current_song.artist, src->artist, 128);
-  this->current_song.duration_ms = src->duration_ms;
-  this->current_song.progress_ms = src->progress_ms;
+  this->current_song = *src;
 }
 
 void Spotify::clear_current_song() {
