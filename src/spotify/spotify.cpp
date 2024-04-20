@@ -31,6 +31,7 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   name.toCharArray(dst->title, 128);
   dst->duration_ms = currently_playing["duration_ms"];
   dst->progress_ms = (*this->data)["progress_ms"];
+  dst->timestamp = xTaskGetTickCount();
   this->format_album_cover(&dst->cover, this->data);
   return SPOTIFY_RESPONSE_OK;
 }

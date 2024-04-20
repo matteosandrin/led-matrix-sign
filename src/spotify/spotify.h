@@ -26,6 +26,7 @@ struct CurrentlyPlaying {
   char artist[128];
   int32_t duration_ms;
   int32_t progress_ms;
+  uint32_t timestamp;
   AlbumCover cover;
 };
 

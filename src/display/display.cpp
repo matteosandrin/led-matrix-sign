@@ -182,15 +182,17 @@ void Display::render_music_content(MusicRenderContent content) {
 
 void Display::render_animation_content(AnimationRenderContent content) {
   if (content.type == ANIMATION_TYPE_TEXT_SCROLL) {
-    this->render_text_scrolling(content.content.text_scroll.text, content.bbox,
-                                content.speed, true);
+    this->render_text_scrolling(content, true);
   }
 }
 
-void Display::render_text_scrolling(char *text, Rect bbox, int16_t speed,
-                                    bool draw) {
+void Display::render_text_scrolling(AnimationRenderContent content, bool draw) {
   int16_t x0, y0;
   uint16_t w0, h0;
+  char *text = content.content.text_scroll.text;
+  uint32_t start = content.content.text_scroll.start_timestamp;
+  Rect bbox = content.bbox;
+  int16_t speed = content.speed;
   this->mask.fillScreen(this->BLACK);
   this->mask.fillRect(bbox.x, bbox.y, bbox.w, bbox.h, this->WHITE);
   this->scratch_canvas.setFont(NULL);
@@ -199,10 +201,13 @@ void Display::render_text_scrolling(char *text, Rect bbox, int16_t speed,
   this->scratch_canvas.setTextWrap(false);
   this->scratch_canvas.setCursor(0, 0);
   this->scratch_canvas.getTextBounds(text, bbox.x, bbox.y, &x0, &y0, &w0, &h0);
+  int32_t ticks_delta = xTaskGetTickCount() - start;
   int wrap_width = max(bbox.w, w0) + 8;
-  int shift_x = (int)(round(speed * xTaskGetTickCount() / 1000)) % wrap_width;
+  int shift_x = (int)(round(speed * ticks_delta / 1000)) % wrap_width;
   int new_x = bbox.x + shift_x;
   this->scratch_canvas.setCursor(new_x, bbox.y);
+  this->scratch_canvas.print(text);
+  this->scratch_canvas.setCursor(wrap_width + new_x, bbox.y);
   this->scratch_canvas.print(text);
   this->scratch_canvas.setCursor(-wrap_width + new_x, bbox.y);
   this->scratch_canvas.print(text);

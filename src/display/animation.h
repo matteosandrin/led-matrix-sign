@@ -14,7 +14,8 @@
 class Animations {
   std::map<AnimationId, Animation> animations;
   GFXcanvas16 *canvas;
-  void start_music_animation(AnimationId id, char *text, uint16_t bbox_width);
+  void start_music_animation(AnimationId id, char *text, uint16_t bbox_width,
+                             uint32_t timestamp);
 
  public:
   void setup(GFXcanvas16 *canvas);

@@ -18,7 +18,7 @@ class Display {
 
   int justify_right(char *str, int char_width, int min_x);
   int justify_center(char *str, int char_width);
-  void render_text_scrolling(char *text, Rect bbox, int16_t speed, bool draw);
+  void render_text_scrolling(AnimationRenderContent content, bool draw);
 
  public:
   Animations animations;

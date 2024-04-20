@@ -23,6 +23,7 @@ enum AnimationId {
 
 struct TextAnimationContent {
   char text[128];
+  uint32_t start_timestamp;
 };
 
 union AnimationContent {
