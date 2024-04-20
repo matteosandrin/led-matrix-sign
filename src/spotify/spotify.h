@@ -29,6 +29,7 @@ class Spotify : lms::Client {
   void check_refresh_token();
   void get_refresh_bearer_token(char *dst);
   void get_api_bearer_token(char *dst);
+  void format_artists(char *dst, JsonDocument *data);
 
  public:
   CurrentlyPlaying current_song;

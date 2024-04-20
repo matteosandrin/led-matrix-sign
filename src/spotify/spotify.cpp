@@ -25,7 +25,16 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   }
   serializeJsonPretty(*this->data, Serial);
   JsonObject currently_playing = (*this->data)["item"];
-  JsonArray artists = currently_playing["artists"];
+  String name = currently_playing["name"];
+  this->format_artists(dst->artist, this->data);
+  name.toCharArray(dst->title, 128);
+  dst->duration_ms = currently_playing["duration_ms"];
+  dst->progress_ms = (*this->data)["progress_ms"];
+  return SPOTIFY_RESPONSE_OK;
+}
+
+void Spotify::format_artists(char *dst, JsonDocument *data) {
+  JsonArray artists = (*data)["item"]["artists"];
   char artist[128] = "";
   if (artists.size() > 1) {
     for (JsonObject a : artists) {
@@ -37,12 +46,7 @@ SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
   } else {
     strncpy(artist, artists[0]["name"], 128);
   }
-  String name = currently_playing["name"];
-  strncpy(dst->artist, artist, 128);
-  name.toCharArray(dst->title, 128);
-  dst->duration_ms = currently_playing["duration_ms"];
-  dst->progress_ms = (*this->data)["progress_ms"];
-  return SPOTIFY_RESPONSE_OK;
+  strncpy(dst, artist, 128);
 }
 
 void Spotify::get_refresh_bearer_token(char *dst) {
