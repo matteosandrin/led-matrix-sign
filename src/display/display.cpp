@@ -1,6 +1,7 @@
 #include "display.h"
 
 #include "../fonts/MBTASans.h"
+#include "../fonts/Picopixel.h"
 #include "display-pins.h"
 
 Display::Display()
@@ -170,6 +171,39 @@ void Display::render_music_content(MusicRenderContent content) {
       this->canvas.drawRect(32, SCREEN_HEIGHT - 2, current_bar_width, 2,
                             SPOTIFY_GREEN);
     }
+    // draw time progress
+    Rect progress_time_bounds;
+    int16_t progress_time_x = SCREEN_HEIGHT + 1;
+    int16_t progress_time_y = SCREEN_HEIGHT - 4;
+    char progress_time[16];
+    millis_to_timestring(playing.progress_ms, progress_time);
+    this->canvas.setFont(&Picopixel);
+    this->canvas.getTextBounds(progress_time, progress_time_x, progress_time_y,
+                               &progress_time_bounds.x, &progress_time_bounds.y,
+                               &progress_time_bounds.w,
+                               &progress_time_bounds.h);
+    this->canvas.fillRect(progress_time_bounds.x, progress_time_bounds.y,
+                          progress_time_bounds.w + 8, progress_time_bounds.h,
+                          this->BLACK);
+    this->canvas.setCursor(progress_time_x, progress_time_y);
+    this->canvas.print(progress_time);
+    // draw time to end
+    int32_t time_to_end_millis = -(playing.duration_ms - playing.progress_ms);
+    Rect time_to_end_bounds;
+    int16_t time_to_end_x = 0;
+    int16_t time_to_end_y = progress_time_y;
+    char time_to_end[16];
+    millis_to_timestring(time_to_end_millis, time_to_end);
+    this->canvas.setFont(&Picopixel);
+    this->canvas.getTextBounds(time_to_end, time_to_end_x, time_to_end_y,
+                               &time_to_end_bounds.x, &time_to_end_bounds.y,
+                               &time_to_end_bounds.w, &time_to_end_bounds.h);
+    time_to_end_x = SCREEN_WIDTH - time_to_end_bounds.w - 1;
+    this->canvas.fillRect(time_to_end_x - 8, time_to_end_bounds.y,
+                          time_to_end_bounds.w + 16, time_to_end_bounds.h,
+                          this->BLACK);
+    this->canvas.setCursor(time_to_end_x, time_to_end_y);
+    this->canvas.print(time_to_end);
     // draw image
     this->canvas.drawRGBBitmap(0, 0, this->image_canvas.getBuffer(),
                                this->image_canvas.width(),
@@ -221,5 +255,20 @@ void Display::render_text_scrolling(AnimationRenderContent content, bool draw) {
                              this->scratch_canvas.height());
   if (draw) {
     this->render_canvas_to_display();
+  }
+}
+
+void millis_to_timestring(int32_t delta, char *dst) {
+  bool negative = delta < 0;
+  delta = abs(delta);
+  int seconds = floor(delta / 1000.0);
+  int hours = floor(seconds / 3600.0);
+  int minutes = floor((seconds % 3600) / 60.0);
+  seconds = seconds % 60;
+  if (hours > 0) {
+    sniprintf(dst, 16, "%s%02d:%02d:%02d", negative ? "-" : "", hours, minutes,
+              seconds);
+  } else {
+    sniprintf(dst, 16, "%s%02d:%02d", negative ? "-" : "", minutes, seconds);
   }
 }

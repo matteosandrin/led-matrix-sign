@@ -146,7 +146,7 @@ void setup() {
   if (sign_mode == SIGN_MODE_MUSIC) {
     music_provider_timer_handle =
         xTimerCreate("music_provider_timer",
-                     1000 / portTICK_PERIOD_MS,  // timer interval in millisec
+                     500 / portTICK_PERIOD_MS,  // timer interval in millisec
                      true,  // is an autoreload timer (repeats periodically)
                      NULL, music_provider_timer);
   }

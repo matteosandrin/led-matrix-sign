@@ -40,4 +40,6 @@ class Display {
   uint16_t SPOTIFY_GREEN;
 };
 
+void millis_to_timestring(int32_t delta, char *dst);
+
 #endif /* RENDER_H */
