@@ -338,6 +338,8 @@ void mbta_provider_task(void *params) {
             status == PREDICTION_STATUS_OK_SHOW_STATION_BANNER) {
           message.content.mbta.predictions[0] = predictions[0];
           message.content.mbta.predictions[1] = predictions[1];
+        } else if (status == PREDICTION_STATUS_ERROR_SHOW_CACHED) {
+          mbta.get_cached_predictions(message.content.mbta.predictions);
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
           Serial.println("sending mbta render_message to render_queue");

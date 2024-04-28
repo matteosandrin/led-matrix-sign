@@ -7,6 +7,7 @@
 
 #define DIRECTION_SOUTHBOUND 0
 #define DIRECTION_NORTHBOUND 1
+#define MBTA_MAX_ERROR_COUNT 3
 
 struct Prediction {
   char label[32];
@@ -19,7 +20,7 @@ enum PredictionStatus {
   PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2,
   PREDICTION_STATUS_OK_SHOW_STATION_BANNER,
   PREDICTION_STATUS_ERROR,
-  PREDICTION_STATUS_SKIP,
+  PREDICTION_STATUS_ERROR_SHOW_CACHED,
 };
 
 enum TrainStation {
@@ -38,6 +39,7 @@ enum TrainStation {
 
 class MBTA : lms::Client {
   Prediction latest_predictions[2];
+  int error_count;
   std::map<TrainStation, char *> train_station_codes = {
       {TRAIN_STATION_ALEWIFE, "place-alfcl"},
       {TRAIN_STATION_DAVIS, "place-davis"},
@@ -87,6 +89,7 @@ class MBTA : lms::Client {
                                                  int direction);
 
   void get_placeholder_predictions(Prediction dst[2]);
+  void get_cached_predictions(Prediction dst[2]);
   void set_station(TrainStation station);
 };
 

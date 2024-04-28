@@ -91,7 +91,8 @@ void Display::render_mbta_content(MBTARenderContent content) {
   this->canvas.setTextWrap(false);
   this->canvas.setTextColor(AMBER);
 
-  if (content.status == PREDICTION_STATUS_OK) {
+  if (content.status == PREDICTION_STATUS_OK ||
+      content.status == PREDICTION_STATUS_ERROR_SHOW_CACHED) {
     Prediction *predictions = content.predictions;
     this->canvas.setFont(&MBTASans);
 
@@ -109,6 +110,10 @@ void Display::render_mbta_content(MBTARenderContent content) {
     this->canvas.print(predictions[1].label);
     this->canvas.setCursor(cursor_x_2, 31);
     this->canvas.print(predictions[1].value);
+    if (content.status == PREDICTION_STATUS_ERROR_SHOW_CACHED) {
+      // draw a pixel in the top right corner when showing cached data
+      this->canvas.drawPixel(SCREEN_WIDTH - 1, 0, this->AMBER);
+    }
   } else if (content.status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_1 ||
              content.status == PREDICITON_STATUS_OK_SHOW_ARR_BANNER_SLOT_2) {
     Prediction *predictions = content.predictions;

@@ -26,8 +26,14 @@ PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
                                        int directions[], int nth_positions[]) {
   int status = this->fetch_predictions(this->data);
   if (status != 0) {
-    return PREDICTION_STATUS_ERROR;
+    this->error_count++;
+    if (this->error_count <= MBTA_MAX_ERROR_COUNT) {
+      return PREDICTION_STATUS_ERROR_SHOW_CACHED;
+    } else {
+      return PREDICTION_STATUS_ERROR;
+    }
   }
+  this->error_count = 0;
   for (int i = 0; i < num_predictions; i++) {
     JsonObject prediction = this->find_nth_prediction_for_direction(
         this->data, directions[i], nth_positions[i]);
@@ -62,6 +68,11 @@ PredictionStatus MBTA::get_predictions_one_direction(Prediction dst[2],
   int directions[2] = {direction, direction};
   int nth_positions[2] = {0, 1};
   return this->get_predictions(dst, 2, directions, nth_positions);
+}
+
+void MBTA::get_cached_predictions(Prediction dst[2]) {
+  dst[0] = this->latest_predictions[0];
+  dst[1] = this->latest_predictions[1];
 }
 
 void MBTA::get_placeholder_predictions(Prediction dst[2]) {
