@@ -7,9 +7,9 @@ void Animations::setup(GFXcanvas16 *canvas) { this->canvas = canvas; }
 void Animations::start_music_animations(CurrentlyPlaying song) {
   int bbox_w = SCREEN_WIDTH - ANIMATION_IMAGE_WIDTH - 2;
   this->start_music_animation(ANIMATION_ID_MUSIC_TITLE, song.title, bbox_w,
-                              song.timestamp);
+                              song.timestamp_ms);
   this->start_music_animation(ANIMATION_ID_MUSIC_ARTIST, song.artist, bbox_w,
-                              song.timestamp);
+                              song.timestamp_ms);
 }
 
 void Animations::start_music_animation(AnimationId id, char *text,
@@ -17,6 +17,7 @@ void Animations::start_music_animation(AnimationId id, char *text,
                                        uint32_t timestamp) {
   Animation animation;
   Rect text_bbox;
+  this->canvas->setFont(NULL);
   this->canvas->getTextBounds(text, 0, 0, &text_bbox.x, &text_bbox.y,
                               &text_bbox.w, &text_bbox.h);
   if (text_bbox.w > bbox_width) {

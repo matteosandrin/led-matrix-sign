@@ -146,7 +146,7 @@ void setup() {
   if (sign_mode == SIGN_MODE_MUSIC) {
     music_provider_timer_handle =
         xTimerCreate("music_provider_timer",
-                     500 / portTICK_PERIOD_MS,  // timer interval in millisec
+                     1000 / portTICK_PERIOD_MS,  // timer interval in millisec
                      true,  // is an autoreload timer (repeats periodically)
                      NULL, music_provider_timer);
   }
@@ -407,7 +407,7 @@ void music_provider_task(void *params) {
         } else if (status == SPOTIFY_RESPONSE_OK_SHOW_CACHED) {
           // If nothing is playing but we still have the last song in memory,
           // let's keep showing that song
-          message.content.music.data = spotify.current_song;
+          message.content.music.data = spotify.get_current_song();
         } else {
           display.animations.stop_music_animations();
           spotify.clear_current_song();

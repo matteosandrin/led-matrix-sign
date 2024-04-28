@@ -25,15 +25,16 @@ struct AlbumCover {
 struct CurrentlyPlaying {
   char title[128];
   char artist[128];
-  int32_t duration_ms;
-  int32_t progress_ms;
-  uint32_t timestamp;
+  uint32_t duration_ms;
+  uint32_t progress_ms;
+  uint32_t timestamp_ms;
   AlbumCover cover;
 };
 
 class Spotify : lms::Client {
   char access_token[256];
   unsigned long last_refresh_time;
+  CurrentlyPlaying current_song;
   SpotifyResponse fetch_currently_playing(JsonDocument *dst);
   SpotifyResponse fetch_refresh_token(char *dst);
   void check_refresh_token();
@@ -44,7 +45,6 @@ class Spotify : lms::Client {
   SpotifyResponse fetch_album_cover(char *url, uint8_t *dst);
 
  public:
-  CurrentlyPlaying current_song;
   uint8_t *album_cover_jpg;
   void setup();
   SpotifyResponse refresh_token();
@@ -52,6 +52,7 @@ class Spotify : lms::Client {
   SpotifyResponse get_album_cover(CurrentlyPlaying *src);
   void update_current_song(CurrentlyPlaying *src);
   void clear_current_song();
+  CurrentlyPlaying get_current_song();
   bool is_current_song_new(const CurrentlyPlaying *cmp);
 };
 

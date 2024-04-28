@@ -1,5 +1,7 @@
 #include "display.h"
 
+#include <freertos/FreeRTOS.h>
+
 #include "../fonts/MBTASans.h"
 #include "../fonts/Picopixel.h"
 #include "display-pins.h"
@@ -177,11 +179,20 @@ void Display::render_music_content(MusicRenderContent content) {
                             SPOTIFY_GREEN);
     }
     // draw time progress
+    Serial.printf("progress: %d\n", playing.progress_ms);
+    Serial.printf("duration: %d\n", playing.duration_ms);
     Rect progress_time_bounds;
     int16_t progress_time_x = SCREEN_HEIGHT + 1;
     int16_t progress_time_y = SCREEN_HEIGHT - 4;
     char progress_time[16];
-    millis_to_timestring(playing.progress_ms, progress_time);
+    uint32_t time_drift_ms =
+        xTaskGetTickCount() * portTICK_PERIOD_MS - playing.timestamp_ms;
+    if (time_drift_ms > 500) {
+      time_drift_ms = 0;
+    }
+    uint32_t progress_sec =
+        floor((playing.progress_ms + time_drift_ms) / 1000.0);
+    millis_to_timestring(progress_sec, progress_time, false);
     this->canvas.setFont(&Picopixel);
     this->canvas.getTextBounds(progress_time, progress_time_x, progress_time_y,
                                &progress_time_bounds.x, &progress_time_bounds.y,
@@ -193,12 +204,18 @@ void Display::render_music_content(MusicRenderContent content) {
     this->canvas.setCursor(progress_time_x, progress_time_y);
     this->canvas.print(progress_time);
     // draw time to end
-    int32_t time_to_end_millis = -(playing.duration_ms - playing.progress_ms);
+    uint32_t progress_ms =
+        min(playing.progress_ms + time_drift_ms, playing.duration_ms);
+    uint32_t time_to_end_millis = playing.duration_ms - progress_ms;
+    if (time_to_end_millis < 0) {
+      time_to_end_millis = 0;
+    }
+    uint32_t time_to_end_sec = ceil(time_to_end_millis / 1000.0);
     Rect time_to_end_bounds;
     int16_t time_to_end_x = 0;
     int16_t time_to_end_y = progress_time_y;
     char time_to_end[16];
-    millis_to_timestring(time_to_end_millis, time_to_end);
+    millis_to_timestring(time_to_end_sec, time_to_end, true);
     this->canvas.setFont(&Picopixel);
     this->canvas.getTextBounds(time_to_end, time_to_end_x, time_to_end_y,
                                &time_to_end_bounds.x, &time_to_end_bounds.y,
@@ -245,9 +262,9 @@ void Display::render_text_scrolling(AnimationRenderContent content, bool draw) {
   this->scratch_canvas.setTextWrap(false);
   this->scratch_canvas.setCursor(0, 0);
   this->scratch_canvas.getTextBounds(text, bbox.x, bbox.y, &x0, &y0, &w0, &h0);
-  int32_t ticks_delta = xTaskGetTickCount() - start;
+  uint32_t ticks_delta = xTaskGetTickCount() * portTICK_PERIOD_MS - start;
   int wrap_width = max(bbox.w, w0) + 8;
-  int shift_x = (int)(round(speed * ticks_delta / 1000)) % wrap_width;
+  int shift_x = (int)(floor(speed * ticks_delta / 1000.0)) % wrap_width;
   int new_x = bbox.x + shift_x;
   this->scratch_canvas.setCursor(new_x, bbox.y);
   this->scratch_canvas.print(text);
@@ -263,17 +280,15 @@ void Display::render_text_scrolling(AnimationRenderContent content, bool draw) {
   }
 }
 
-void millis_to_timestring(int32_t delta, char *dst) {
-  bool negative = delta < 0;
-  delta = abs(delta);
-  int seconds = floor(delta / 1000.0);
+void millis_to_timestring(uint32_t delta_sec, char *dst, bool is_negative) {
+  int seconds = delta_sec;
   int hours = floor(seconds / 3600.0);
   int minutes = floor((seconds % 3600) / 60.0);
   seconds = seconds % 60;
   if (hours > 0) {
-    sniprintf(dst, 16, "%s%02d:%02d:%02d", negative ? "-" : "", hours, minutes,
-              seconds);
+    sniprintf(dst, 16, "%s%02d:%02d:%02d", is_negative ? "-" : "", hours,
+              minutes, seconds);
   } else {
-    sniprintf(dst, 16, "%s%02d:%02d", negative ? "-" : "", minutes, seconds);
+    sniprintf(dst, 16, "%s%02d:%02d", is_negative ? "-" : "", minutes, seconds);
   }
 }

@@ -1,6 +1,7 @@
 #include "spotify.h"
 
 #include <base64.h>
+#include <freertos/FreeRTOS.h>
 
 #include "spotify-api-key.h"
 #include "spotify-cert.h"
@@ -21,21 +22,20 @@ void Spotify::setup() {
 }
 
 SpotifyResponse Spotify::get_currently_playing(CurrentlyPlaying *dst) {
+  dst->timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
   SpotifyResponse status = this->fetch_currently_playing(data);
-  if (status == SPOTIFY_RESPONSE_EMPTY && this->current_song.timestamp > 0) {
+  if (status == SPOTIFY_RESPONSE_EMPTY && this->current_song.timestamp_ms > 0) {
     return SPOTIFY_RESPONSE_OK_SHOW_CACHED;
   }
   if (status != SPOTIFY_RESPONSE_OK) {
     return status;
   }
-  serializeJsonPretty(*this->data, Serial);
   JsonObject currently_playing = (*this->data)["item"];
   String name = currently_playing["name"];
   this->format_artists(dst->artist, this->data);
   name.toCharArray(dst->title, 128);
   dst->duration_ms = currently_playing["duration_ms"];
   dst->progress_ms = (*this->data)["progress_ms"];
-  dst->timestamp = xTaskGetTickCount();
   this->format_album_cover(&dst->cover, this->data);
   return SPOTIFY_RESPONSE_OK;
 }
@@ -224,6 +224,7 @@ void Spotify::check_refresh_token() {
 
 void Spotify::update_current_song(CurrentlyPlaying *src) {
   this->current_song = *src;
+  this->current_song.progress_ms = 0;
 }
 
 void Spotify::clear_current_song() {
@@ -234,3 +235,5 @@ bool Spotify::is_current_song_new(const CurrentlyPlaying *cmp) {
   return strcmp(cmp->artist, this->current_song.artist) != 0 ||
          strcmp(cmp->title, this->current_song.title) != 0;
 }
+
+CurrentlyPlaying Spotify::get_current_song() { return this->current_song; }
