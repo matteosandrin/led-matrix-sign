@@ -34,6 +34,9 @@ PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
     }
   }
   this->error_count = 0;
+  if ((*this->data)["data"].size() == 0) {
+    return PREDICTION_STATUS_ERROR_EMPTY;
+  }
   for (int i = 0; i < num_predictions; i++) {
     JsonObject prediction = this->find_nth_prediction_for_direction(
         this->data, directions[i], nth_positions[i]);

@@ -94,7 +94,8 @@ void Display::render_mbta_content(MBTARenderContent content) {
   this->canvas.setTextColor(AMBER);
 
   if (content.status == PREDICTION_STATUS_OK ||
-      content.status == PREDICTION_STATUS_ERROR_SHOW_CACHED) {
+      content.status == PREDICTION_STATUS_ERROR_SHOW_CACHED ||
+      content.status == PREDICTION_STATUS_ERROR_EMPTY) {
     Prediction *predictions = content.predictions;
     this->canvas.setFont(&MBTASans);
 
