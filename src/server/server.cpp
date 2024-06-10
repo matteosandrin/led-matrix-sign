@@ -22,7 +22,10 @@ const char index_html[] PROGMEM = R"(
     <form method="GET" action="/mode">
       <h2>Set sign mode</h2>
       <select name="id">
-        %SIGN_MODE_OPTIONS%
+        <option value="0">SIGN_MODE_TEST</option>
+        <option value="1">SIGN_MODE_MBTA</option>
+        <option value="2">SIGN_MODE_CLOCK</option>
+        <option value="3">SIGN_MODE_MUSIC</option>
       </select>
       <input type="submit" value="Set sign mode">
     </form>
@@ -30,7 +33,16 @@ const char index_html[] PROGMEM = R"(
       <h2>Set MBTA station</h2>
       <input name="key" type="hidden" value="station">
       <select name="value">
-        %TRAIN_STATION_OPTIONS%
+        <option value="0">Alewife</option>
+        <option value="1">Davis</option>
+        <option value="2">Porter</option>
+        <option value="3">Harvard</option>
+        <option value="4">Central</option>
+        <option value="5">Kendall/MIT</option>
+        <option value="6">Charles/MGH</option>
+        <option value="7">Park Street</option>
+        <option value="8">Downtown Crossing</option>
+        <option value="9">South Station</option>
       </select>
       <input type="submit" value="Set station">
     </form>
@@ -48,10 +60,7 @@ void Server::setup(SignMode sign_mode, QueueSetHandle_t ui_queue) {
 
 void Server::setup_index() {
   this->server.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
-    AwsTemplateProcessor processor = [this](const String &var) {
-      return this->html_template_processor(var);
-    };
-    request->send_P(200, "text/html", index_html, processor);
+    request->send_P(200, "text/html", index_html);
   });
 }
 
@@ -100,33 +109,6 @@ void Server::setup_set() {
     }
     request->send(500, "text/plain", "missing query parameter 'id'");
   });
-}
-
-String Server::html_template_processor(const String &var) {
-  String options = "";
-  if (var == "SIGN_MODE_OPTIONS") {
-    for (int i = 0; i < SignMode::SIGN_MODE_MAX; i++) {
-      SignMode sign_mode = (SignMode)i;
-      char option_char[64];
-      char selected[16] = "";
-      if (sign_mode == this->sign_mode) {
-        strncpy(selected, "selected", 16);
-      }
-      snprintf(option_char, 64, "<option value=\"%d\" %s>%s</option>\n",
-               sign_mode, selected, sign_mode_to_str(sign_mode));
-      options += option_char;
-    }
-  }
-  if (var == "TRAIN_STATION_OPTIONS") {
-    for (int i = 0; i < TrainStation::TRAIN_STATION_MAX; i++) {
-      TrainStation station = (TrainStation)i;
-      char option_char[64];
-      snprintf(option_char, 64, "<option value=\"%d\">%s</option>\n", station,
-               train_station_to_str(station));
-      options += option_char;
-    }
-  }
-  return options;
 }
 
 } /* namespace lms */

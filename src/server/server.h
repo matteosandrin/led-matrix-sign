@@ -14,7 +14,6 @@ class Server {
   void setup_index();
   void setup_mode();
   void setup_set();
-  String html_template_processor(const String &var);
 
  public:
   Server() : server(80) {}
