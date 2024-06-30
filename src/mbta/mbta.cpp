@@ -24,6 +24,12 @@ void MBTA::setup() {
 
 PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
                                        int directions[], int nth_positions[]) {
+  if (this->station == TRAIN_STATION_TEST) {
+    this->get_placeholder_predictions(dst);
+    strcpy(dst[0].value, "5 min");
+    strcpy(dst[1].value, "12 min");
+    return PREDICTION_STATUS_OK;
+  }
   int status = this->fetch_predictions(this->data);
   if (status != 0) {
     this->error_count++;

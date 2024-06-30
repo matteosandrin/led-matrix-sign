@@ -43,6 +43,7 @@ const char index_html[] PROGMEM = R"(
         <option value="7">Park Street</option>
         <option value="8">Downtown Crossing</option>
         <option value="9">South Station</option>
+        <option value="10">Test Station</option>
       </select>
       <input type="submit" value="Set station">
     </form>
