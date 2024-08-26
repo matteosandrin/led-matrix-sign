@@ -46,13 +46,7 @@ PredictionStatus MBTA::get_predictions(Prediction *dst, int num_predictions,
   for (int i = 0; i < num_predictions; i++) {
     JsonObject prediction = this->find_nth_prediction_for_direction(
         this->data, directions[i], nth_positions[i]);
-    if (prediction.isNull()) {
-      return PREDICTION_STATUS_ERROR;
-    }
     JsonObject trip = this->find_trip_for_prediction(this->data, prediction);
-    if (trip.isNull()) {
-      return PREDICTION_STATUS_ERROR;
-    }
     this->format_prediction(prediction, trip, &dst[i]);
   }
   PredictionStatus prediction_status = PREDICTION_STATUS_OK;
@@ -169,7 +163,8 @@ JsonObject MBTA::find_nth_prediction_for_direction(
       }
     }
   }
-  return prediction;
+  JsonObject null_prediction;
+  return null_prediction;
 }
 
 JsonObject MBTA::find_trip_for_prediction(JsonDocument *prediction_data_ptr,
@@ -238,6 +233,11 @@ void MBTA::format_prediction(JsonObject prediction, JsonObject trip,
   char display_string[16];
   char status_char[32];
   struct tm local_time;
+  if (prediction.isNull() || trip.isNull()) {
+    strcpy(dst->label, "");
+    strcpy(dst->value, "");
+    return;
+  }
   String headsign = trip["attributes"]["headsign"];
   String arr_time = prediction["attributes"]["arrival_time"];
   String dep_time = prediction["attributes"]["departure_time"];

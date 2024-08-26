@@ -99,20 +99,29 @@ void Display::render_mbta_content(MBTARenderContent content) {
     Prediction *predictions = content.predictions;
     this->canvas.setFont(&MBTASans);
 
-    Serial.printf("%s: %s\n", predictions[0].label, predictions[0].value);
-    Serial.printf("%s: %s\n", predictions[1].label, predictions[1].value);
+    Prediction prediction_1 = predictions[0];
+    Prediction prediction_2 = predictions[1];
 
-    int cursor_x_1 = justify_right(predictions[0].value, 10, PANEL_RES_X * 3);
+    if (strlen(prediction_1.label) == 0) {
+      // if the first line is empty, swap predictions
+      Prediction prediction_1 = predictions[1];
+      Prediction prediction_2 = predictions[0];
+    }
+
+    Serial.printf("%s: %s\n", prediction_1.label, prediction_1.value);
+    Serial.printf("%s: %s\n", prediction_2.label, prediction_2.value);
+
+    int cursor_x_1 = justify_right(prediction_1.value, 10, PANEL_RES_X * 3);
     this->canvas.setCursor(0, 15);
-    this->canvas.print(predictions[0].label);
+    this->canvas.print(prediction_1.label);
     this->canvas.setCursor(cursor_x_1, 15);
-    this->canvas.print(predictions[0].value);
+    this->canvas.print(prediction_1.value);
 
-    int cursor_x_2 = justify_right(predictions[1].value, 10, PANEL_RES_X * 3);
+    int cursor_x_2 = justify_right(prediction_2.value, 10, PANEL_RES_X * 3);
     this->canvas.setCursor(0, 31);
-    this->canvas.print(predictions[1].label);
+    this->canvas.print(prediction_2.label);
     this->canvas.setCursor(cursor_x_2, 31);
-    this->canvas.print(predictions[1].value);
+    this->canvas.print(prediction_2.value);
     if (content.status == PREDICTION_STATUS_ERROR_SHOW_CACHED) {
       // draw a pixel in the top right corner when showing cached data
       this->canvas.drawPixel(SCREEN_WIDTH - 1, 0, this->AMBER);
