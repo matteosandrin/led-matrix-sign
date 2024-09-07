@@ -340,7 +340,7 @@ void mbta_provider_task(void *params) {
           message.content.mbta.predictions[1] = predictions[1];
         } else if (status == PREDICTION_STATUS_ERROR_SHOW_CACHED) {
           mbta.get_cached_predictions(message.content.mbta.predictions);
-        } else if (status == PREDICTION_STATUS_ERROR_EMPTY) {
+        } else {
           mbta.get_placeholder_predictions(message.content.mbta.predictions);
         }
         if (xQueueSend(render_queue, &message, TEN_MILLIS)) {
